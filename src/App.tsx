@@ -322,6 +322,8 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
   const [editingCollection, setEditingCollection] = useState<number | null>(null);
   const [editingClient, setEditingClient] = useState<number | null>(null);
   const [editingRental, setEditingRental] = useState<number | null>(null);
+  const [viewingClientRentals, setViewingClientRentals] = useState<Rental[] | null>(null);
+  const [rentalMonthFilter, setRentalMonthFilter] = useState<number>(0); // 0 means all
 
   const [editRentalForm, setEditRentalForm] = useState({
     client_id: 0,
@@ -1032,7 +1034,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                         {client.company_phone && <p className="text-xs text-zinc-500">{client.company_phone}</p>}
                       </div>
                     )}
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                       <button 
                         onClick={() => handleEditClient(client)}
                         className="flex-1 py-2 bg-zinc-100 text-zinc-900 rounded-xl text-xs font-bold hover:bg-black hover:text-white transition-all"
@@ -1044,6 +1046,16 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                         className="flex-1 py-2 bg-red-50 text-red-500 rounded-xl text-xs font-bold hover:bg-red-500 hover:text-white transition-all"
                       >
                         Delete
+                      </button>
+                      <button 
+                        onClick={() => {
+                          const clientRentals = rentals.filter(r => r.client_id === client.id || r.client_name === client.full_name);
+                          setViewingClientRentals(clientRentals);
+                          setRentalMonthFilter(0);
+                        }}
+                        className="w-full py-2 bg-indigo-500 text-white rounded-xl text-xs font-bold hover:bg-indigo-600 transition-all"
+                      >
+                        Show Rented Clothes
                       </button>
                     </div>
                   </div>
@@ -1228,6 +1240,80 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                   No {rentalFilter === 'active' ? 'active' : ''} rentals found.
                 </div>
               )}
+            </div>
+          </div>
+        )}
+        {viewingClientRentals && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div className="bg-white rounded-3xl p-8 max-w-2xl w-full max-h-[80vh] flex flex-col">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h3 className="text-xl font-bold">Rented Clothes</h3>
+                  <p className="text-sm text-zinc-500">Total items: {
+                    viewingClientRentals.filter(r => {
+                      if (rentalMonthFilter === 0) return true;
+                      const rentalDate = new Date(r.rental_date);
+                      const now = new Date();
+                      const diffMonths = (now.getFullYear() - rentalDate.getFullYear()) * 12 + (now.getMonth() - rentalDate.getMonth());
+                      return diffMonths < rentalMonthFilter;
+                    }).length
+                  }</p>
+                </div>
+                <button onClick={() => setViewingClientRentals(null)} className="p-2 hover:bg-zinc-100 rounded-full">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+                <button 
+                  onClick={() => setRentalMonthFilter(0)}
+                  className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${rentalMonthFilter === 0 ? 'bg-black text-white' : 'bg-zinc-100 text-zinc-600'}`}
+                >
+                  All Time
+                </button>
+                {[1, 2, 3, 6].map(m => (
+                  <button 
+                    key={m}
+                    onClick={() => setRentalMonthFilter(m)}
+                    className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${rentalMonthFilter === m ? 'bg-black text-white' : 'bg-zinc-100 text-zinc-600'}`}
+                  >
+                    Last {m} {m === 1 ? 'Month' : 'Months'}
+                  </button>
+                ))}
+              </div>
+
+              <div className="space-y-4 overflow-y-auto flex-1 pr-2">
+                {viewingClientRentals
+                  .filter(r => {
+                    if (rentalMonthFilter === 0) return true;
+                    const rentalDate = new Date(r.rental_date);
+                    const now = new Date();
+                    const diffMonths = (now.getFullYear() - rentalDate.getFullYear()) * 12 + (now.getMonth() - rentalDate.getMonth());
+                    return diffMonths < rentalMonthFilter;
+                  })
+                  .map(rental => (
+                    <div key={rental.id} className="flex items-center gap-4 p-4 border border-zinc-200 rounded-2xl">
+                      <img src={rental.image_url} alt={rental.clothing_name} className="w-16 h-16 rounded-lg object-cover" referrerPolicy="no-referrer" />
+                      <div className="flex-1">
+                        <h4 className="font-bold">{rental.clothing_name}</h4>
+                        <p className="text-sm text-zinc-500">Size: {rental.size} | Color: {rental.color}</p>
+                        <p className="text-xs text-zinc-400">Rented: {new Date(rental.rental_date).toLocaleDateString()}</p>
+                      </div>
+                      <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${rental.status === 'active' ? 'bg-emerald-100 text-emerald-600' : 'bg-zinc-100 text-zinc-400'}`}>
+                        {rental.status}
+                      </div>
+                    </div>
+                  ))}
+                {viewingClientRentals.filter(r => {
+                  if (rentalMonthFilter === 0) return true;
+                  const rentalDate = new Date(r.rental_date);
+                  const now = new Date();
+                  const diffMonths = (now.getFullYear() - rentalDate.getFullYear()) * 12 + (now.getMonth() - rentalDate.getMonth());
+                  return diffMonths < rentalMonthFilter;
+                }).length === 0 && (
+                  <p className="text-center text-zinc-500 py-8">No rented clothes found for this period.</p>
+                )}
+              </div>
             </div>
           </div>
         )}
