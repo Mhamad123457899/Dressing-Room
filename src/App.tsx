@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, Component, ErrorInfo, ReactNode } from "react";
+import { useTranslation } from 'react-i18next';
 import { 
   Plus, 
   Trash2, 
@@ -15,14 +16,37 @@ import {
   Search,
   Filter,
   X,
-  Check
+  Check,
+  AlertCircle
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { 
+  db, 
+  auth, 
+  onAuthStateChanged,
+  User as FirebaseUser 
+} from "./firebase";
+import { 
+  collection, 
+  onSnapshot, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  doc, 
+  query, 
+  where,
+  orderBy,
+  Timestamp,
+  getDocs,
+  writeBatch,
+  arrayUnion,
+  arrayRemove
+} from "firebase/firestore";
 
 // --- Types ---
 
 interface ClothingItem {
-  id: number;
+  id: string;
   name: string;
   type: string;
   model: string;
@@ -32,70 +56,45 @@ interface ClothingItem {
   weather: string;
   image_url: string;
   section: string;
+  created_at?: any;
 }
 
 interface Collection {
-  id: number;
+  id: string;
   name: string;
   event_date: string;
   description: string;
   image_url: string;
+  itemIds?: string[];
 }
 
 interface Rental {
-  id: number;
-  clothing_id: number;
-  client_id?: number;
+  id: string;
+  clothing_id: string;
+  client_id?: string;
   client_name: string;
   client_phone: string;
   client_full_name?: string;
   client_phone_number?: string;
   size: string;
   color: string;
-  rental_date: string;
+  rental_date: any;
   status: string;
   clothing_name: string;
   image_url: string;
 }
 
 interface Client {
-  id: number;
+  id: string;
   full_name: string;
   phone: string;
   id_image_url: string;
   company_name: string;
   company_phone: string;
-  created_at: string;
+  created_at: any;
 }
 
 // --- Constants ---
-
-const fetchJson = async (url: string, options?: RequestInit) => {
-  const res = await fetch(url, options);
-  const contentType = res.headers.get("content-type");
-  const isJson = contentType && contentType.includes("application/json");
-  
-  if (!res.ok) {
-    if (isJson) {
-      const errorData = await res.json();
-      throw new Error(errorData.message || `Server error: ${res.status}`);
-    }
-    const text = await res.text();
-    console.error(`Fetch error for ${url}:`, {
-      status: res.status,
-      statusText: res.statusText,
-      contentType,
-      bodySample: text.substring(0, 100)
-    });
-    throw new Error(`Server error: ${res.status}`);
-  }
-
-  if (!isJson) {
-    throw new Error(`Expected JSON but got ${contentType || 'nothing'}`);
-  }
-  
-  return await res.json();
-};
 
 const CLOTHING_TYPES = [
   "T-shirt", "Blazer", "Shirt", "Pants", "Jeans", "Jacket", 
@@ -110,44 +109,152 @@ const WEATHER_TYPES = ["Sunny", "Rainy", "Cold", "Hot", "Windy", "Snowy", "All W
 const SECTIONS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 const AGE_GROUPS = ["Kids", "Teens", "Adults", "Seniors", "All Ages"];
 
+// --- Error Handling ---
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId: string | undefined;
+    email: string | null | undefined;
+    emailVerified: boolean | undefined;
+    isAnonymous: boolean | undefined;
+    tenantId: string | null | undefined;
+    providerInfo: {
+      providerId: string;
+      displayName: string | null;
+      email: string | null;
+      photoUrl: string | null;
+    }[];
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData.map(provider => ({
+        providerId: provider.providerId,
+        displayName: provider.displayName,
+        email: provider.email,
+        photoUrl: provider.photoURL
+      })) || []
+    },
+    operationType,
+    path
+  }
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
+// --- Error Boundary ---
+
+class ErrorBoundary extends React.Component<any, any> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: any) {
+    console.error("ErrorBoundary caught an error", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      let message = "Something went wrong. Please try refreshing the page.";
+      try {
+        if (this.state.error?.message) {
+          const parsed = JSON.parse(this.state.error.message);
+          if (parsed.error && parsed.error.includes("permission-denied")) {
+            message = "You don't have permission to view this data. Please make sure you're logged in with the correct account.";
+          }
+        }
+      } catch (e) {
+        // Not a JSON error
+      }
+
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-zinc-50 p-6">
+          <div className="max-w-md w-full bg-white rounded-[2.5rem] p-10 shadow-xl text-center border border-zinc-100">
+            <div className="w-16 h-16 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <AlertCircle size={32} />
+            </div>
+            <h2 className="text-2xl font-black tracking-tighter mb-4">Application Error</h2>
+            <p className="text-zinc-500 mb-8 leading-relaxed">{message}</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="w-full py-4 bg-black text-white rounded-2xl font-black uppercase tracking-widest hover:bg-zinc-800 transition-all shadow-lg"
+            >
+              Refresh Page
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 // --- Components ---
 
-const Navbar = ({ isAdmin, onLogin, onLogout }: { isAdmin: boolean, onLogin: () => void, onLogout: () => void }) => (
+import { LanguageSwitcher } from './components/LanguageSwitcher';
+// ... (rest of imports)
+const Navbar = ({ isAdmin, onLogout, onOpenAdmin, t }: { isAdmin: boolean, onLogout: () => void, onOpenAdmin: () => void, t: any }) => (
   <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-zinc-200 px-6 py-4 flex justify-between items-center">
     <div className="flex items-center gap-2">
-      <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center text-white font-bold text-xl">AD</div>
-      <h1 className="text-xl font-bold tracking-tight text-zinc-900">Media Dressing Room</h1>
+      <Logo size={60} />
+      <h1 className="text-xl font-bold tracking-tight text-zinc-900">Şan Closet Studio</h1>
     </div>
     <div className="flex items-center gap-4">
+      <button 
+        onClick={onOpenAdmin}
+        className="flex items-center gap-2 px-4 py-2 rounded-full bg-black hover:bg-zinc-800 text-white transition-colors font-medium whitespace-nowrap"
+      >
+        <Settings size={18} />
+        <span className="hidden sm:inline">{t('Admin Panel')}</span>
+      </button>
       {isAdmin ? (
         <button 
           onClick={onLogout}
-          className="flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-700 transition-colors font-medium"
+          className="flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-700 transition-colors font-medium whitespace-nowrap"
         >
           <LogOut size={18} />
-          <span>Logout</span>
+          <span className="hidden sm:inline">{t('Logout')}</span>
         </button>
-      ) : (
-        <button 
-          onClick={onLogin}
-          className="flex items-center gap-2 px-4 py-2 rounded-full bg-black hover:bg-zinc-800 text-white transition-colors font-medium"
-        >
-          <Settings size={18} />
-          <span>Admin Panel</span>
-        </button>
-      )}
+      ) : null}
     </div>
   </nav>
 );
 
 const ClothingCard = ({ item, onAddToCollection, onRent, isRented, activeRentals = [] }: { 
   item: ClothingItem, 
-  onAddToCollection?: (id: number) => void, 
-  onRent?: (id: number) => void,
+  onAddToCollection?: (id: string) => void, 
+  onRent?: (id: string) => void,
   isRented?: boolean,
   activeRentals?: Rental[],
   key?: React.Key 
 }) => {
+  const { t } = useTranslation();
   const [selectedSize, setSelectedSize] = useState(item.sizes[0]);
   const selectedColor = item.color;
 
@@ -191,7 +298,7 @@ const ClothingCard = ({ item, onAddToCollection, onRent, isRented, activeRentals
           </span>
           {isCurrentlyRented && (
             <span className="px-3 py-1 bg-red-500 backdrop-blur-sm rounded-full text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">
-              Currently Rented
+              {t('Rented')}
             </span>
           )}
         </div>
@@ -203,14 +310,14 @@ const ClothingCard = ({ item, onAddToCollection, onRent, isRented, activeRentals
             <h3 className="text-lg font-bold text-zinc-900 mb-1">{item.name}</h3>
             <div className="flex items-center gap-3 text-zinc-500 text-xs">
               <span className="flex items-center gap-1"><User size={12} /> {item.age_group}</span>
-              <span className="flex items-center gap-1"><Cloud size={12} /> {item.weather}</span>
+              <span className="flex items-center gap-1"><Cloud size={12} /> {t(item.weather)}</span>
             </div>
           </div>
         </div>
 
         <div className="space-y-4">
           <div>
-            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Available Sizes</p>
+            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">{t('Available Sizes')}</p>
             <div className="flex flex-wrap gap-2">
               {availableSizes.length > 0 ? availableSizes.map(size => (
                 <button
@@ -232,9 +339,9 @@ const ClothingCard = ({ item, onAddToCollection, onRent, isRented, activeRentals
           </div>
 
           <div className="flex items-center gap-2">
-            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Color</p>
+            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{t('Color')}</p>
             <div className="w-6 h-6 rounded-full border border-zinc-200" style={{ backgroundColor: (item.color || "").toLowerCase() }} />
-            <span className="text-xs text-zinc-600 font-medium capitalize">{item.color}</span>
+            <span className="text-xs text-zinc-600 font-medium capitalize">{t(item.color)}</span>
           </div>
 
           <div className="flex flex-col gap-2">
@@ -245,7 +352,7 @@ const ClothingCard = ({ item, onAddToCollection, onRent, isRented, activeRentals
                 className="w-full py-3 bg-black hover:bg-zinc-800 text-white rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 disabled:bg-zinc-300 disabled:cursor-not-allowed"
               >
                 <Tag size={16} />
-                {isCurrentlyRented ? 'Rented' : 'Rent Now'}
+                {isCurrentlyRented ? t('Rented') : t('Rent Now')}
               </button>
             )}
             {onAddToCollection && (
@@ -268,18 +375,19 @@ const ClothingCard = ({ item, onAddToCollection, onRent, isRented, activeRentals
   );
 };
 
-const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn, onDeleteRental, onRefresh, setNotification, setConfirmModal, setAddToCollectionModal }: { 
+const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn, onDeleteRental, setNotification, setConfirmModal, setAddToCollectionModal, seedSampleData, isSubmitting }: { 
   onClose: () => void, 
   rentals: Rental[], 
   clothes: ClothingItem[], 
   collections: Collection[],
   clients: Client[],
-  onReturn: (id: number) => void,
-  onDeleteRental: (id: number) => void,
-  onRefresh: () => void,
+  onReturn: (id: string) => void,
+  onDeleteRental: (id: string) => void,
   setNotification: (n: {message: string, type: 'success' | 'error'}) => void,
   setConfirmModal: (c: {show: boolean, title: string, message: string, onConfirm: () => void} | null) => void,
-  setAddToCollectionModal: (m: {show: boolean, clothingId: number | null}) => void
+  setAddToCollectionModal: (m: {show: boolean, clothingId: string | null}) => void,
+  seedSampleData: () => Promise<void>,
+  isSubmitting: boolean
 }) => {
   const [activeTab, setActiveTab] = useState<"clothes" | "collections" | "rentals" | "clients">("clothes");
   const [rentalFilter, setRentalFilter] = useState<"active" | "all">("active");
@@ -320,23 +428,19 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
   const [sizeInput, setSizeInput] = useState("");
   const [colorInput, setColorInput] = useState("");
 
-  const [editingCloth, setEditingCloth] = useState<number | null>(null);
-  const [editingCollection, setEditingCollection] = useState<number | null>(null);
-  const [editingClient, setEditingClient] = useState<number | null>(null);
-  const [editingRental, setEditingRental] = useState<number | null>(null);
+  const [editingCloth, setEditingCloth] = useState<string | null>(null);
+  const [editingCollection, setEditingCollection] = useState<string | null>(null);
+  const [editingClient, setEditingClient] = useState<string | null>(null);
+  const [editingRental, setEditingRental] = useState<string | null>(null);
   const [viewingClientRentals, setViewingClientRentals] = useState<Rental[] | null>(null);
   const [rentalMonthFilter, setRentalMonthFilter] = useState<number>(0); // 0 means all
 
   const [editRentalForm, setEditRentalForm] = useState({
-    client_id: 0,
+    client_id: "",
     size: "",
     color: "",
     status: "active"
   });
-
-  useEffect(() => {
-    onRefresh();
-  }, []);
 
   const scrollToTop = () => {
     if (panelRef.current) {
@@ -352,17 +456,14 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
     }
     try {
       if (editingCloth) {
-        await fetchJson(`/api/clothes/${editingCloth}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(newCloth)
+        await updateDoc(doc(db, "clothes", editingCloth), {
+          ...newCloth
         });
         setEditingCloth(null);
       } else {
-        await fetchJson("/api/clothes", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(newCloth)
+        await addDoc(collection(db, "clothes"), {
+          ...newCloth,
+          created_at: Timestamp.now()
         });
       }
       setNotification({ message: editingCloth ? "Item updated successfully!" : "Item added successfully!", type: "success" });
@@ -377,7 +478,6 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
         image_url: "",
         section: "A"
       });
-      onRefresh();
     } catch (err) {
       setNotification({ message: "Failed to save item.", type: "error" });
     }
@@ -403,22 +503,18 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
     e.preventDefault();
     try {
       if (editingCollection) {
-        await fetchJson(`/api/collections/${editingCollection}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(newCollection)
+        await updateDoc(doc(db, "collections", editingCollection), {
+          ...newCollection
         });
         setEditingCollection(null);
       } else {
-        await fetchJson("/api/collections", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(newCollection)
+        await addDoc(collection(db, "collections"), {
+          ...newCollection,
+          itemIds: []
         });
       }
       setNotification({ message: editingCollection ? "Collection updated!" : "Collection added!", type: "success" });
       setNewCollection({ name: "", event_date: "", description: "", image_url: "" });
-      onRefresh();
     } catch (err) {
       setNotification({ message: "Failed to save collection.", type: "error" });
     }
@@ -439,17 +535,14 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
     e.preventDefault();
     try {
       if (editingClient) {
-        await fetchJson(`/api/clients/${editingClient}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(newClient)
+        await updateDoc(doc(db, "clients", editingClient), {
+          ...newClient
         });
         setEditingClient(null);
       } else {
-        await fetchJson("/api/clients", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(newClient)
+        await addDoc(collection(db, "clients"), {
+          ...newClient,
+          created_at: Timestamp.now()
         });
       }
       setNotification({ message: editingClient ? "Client updated!" : "Client added!", type: "success" });
@@ -460,7 +553,6 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
         company_name: "",
         company_phone: ""
       });
-      onRefresh();
     } catch (err) {
       setNotification({ message: "Failed to save client account.", type: "error" });
     }
@@ -481,7 +573,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
   const handleEditRental = (rental: Rental) => {
     setEditingRental(rental.id);
     setEditRentalForm({
-      client_id: rental.client_id || 0,
+      client_id: rental.client_id || "",
       size: rental.size,
       color: rental.color,
       status: rental.status
@@ -493,24 +585,20 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
     e.preventDefault();
     if (!editingRental) return;
     try {
-      const data = await fetchJson(`/api/rentals/${editingRental}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editRentalForm)
+      const client = clients.find(c => c.id === editRentalForm.client_id);
+      await updateDoc(doc(db, "rentals", editingRental), {
+        ...editRentalForm,
+        client_name: client?.full_name || "",
+        client_phone: client?.phone || ""
       });
-      if (data.success) {
-        setNotification({ message: "Rental record updated!", type: "success" });
-        setEditingRental(null);
-        onRefresh();
-      } else {
-        setNotification({ message: "Failed to update rental.", type: "error" });
-      }
+      setNotification({ message: "Rental record updated!", type: "success" });
+      setEditingRental(null);
     } catch (err) {
       setNotification({ message: "Failed to update rental.", type: "error" });
     }
   };
 
-  const handleDeleteCloth = async (id: number) => {
+  const handleDeleteCloth = async (id: string) => {
     setConfirmModal({
       show: true,
       title: "Delete Item",
@@ -518,9 +606,14 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
       onConfirm: async () => {
         setConfirmModal(null);
         try {
-          await fetchJson(`/api/clothes/${id}`, { method: "DELETE" });
+          await deleteDoc(doc(db, "clothes", id));
+          // Also clean up rentals and collections
+          const rentalSnap = await getDocs(query(collection(db, "rentals"), where("clothing_id", "==", id)));
+          const batch = writeBatch(db);
+          rentalSnap.forEach(d => batch.delete(d.ref));
+          await batch.commit();
+          
           setNotification({ message: "Item deleted successfully!", type: "success" });
-          onRefresh();
         } catch (err) {
           setNotification({ message: "Failed to delete item.", type: "error" });
         }
@@ -528,7 +621,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
     });
   };
 
-  const handleDeleteCollection = async (id: number) => {
+  const handleDeleteCollection = async (id: string) => {
     setConfirmModal({
       show: true,
       title: "Delete Collection",
@@ -536,9 +629,8 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
       onConfirm: async () => {
         setConfirmModal(null);
         try {
-          await fetchJson(`/api/collections/${id}`, { method: "DELETE" });
+          await deleteDoc(doc(db, "collections", id));
           setNotification({ message: "Collection deleted successfully!", type: "success" });
-          onRefresh();
         } catch (err) {
           setNotification({ message: "Failed to delete collection.", type: "error" });
         }
@@ -546,7 +638,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
     });
   };
 
-  const handleDeleteClient = async (id: number) => {
+  const handleDeleteClient = async (id: string) => {
     setConfirmModal({
       show: true,
       title: "Delete Client",
@@ -554,9 +646,8 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
       onConfirm: async () => {
         setConfirmModal(null);
         try {
-          await fetchJson(`/api/clients/${id}`, { method: "DELETE" });
+          await deleteDoc(doc(db, "clients", id));
           setNotification({ message: "Client deleted successfully!", type: "success" });
-          onRefresh();
         } catch (err) {
           setNotification({ message: "Failed to delete client account.", type: "error" });
         }
@@ -595,7 +686,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
               activeTab === "collections" ? "bg-black text-white" : "text-zinc-400 hover:text-zinc-600"
             }`}
           >
-            Collections
+            TVC Wardrobe
           </button>
           <button 
             onClick={() => { setActiveTab("clients"); setClientSearch(""); }}
@@ -622,6 +713,15 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                 <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
                   <Plus className="text-emerald-500" /> {editingCloth ? 'Edit Item' : 'Add New Item'}
                 </h3>
+                <div className="mb-6">
+                  <button 
+                    onClick={seedSampleData}
+                    disabled={isSubmitting}
+                    className="w-full py-2 bg-zinc-100 text-zinc-600 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-zinc-200 transition-all"
+                  >
+                    {isSubmitting ? 'Seeding...' : 'Seed Sample Data'}
+                  </button>
+                </div>
                 <form onSubmit={handleAddCloth} className="space-y-6">
                   <div>
                     <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Item Name</label>
@@ -731,15 +831,26 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                     </div>
                   </div>
 
-                  <div>
+                  <div className="relative">
                     <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Image URL</label>
-                    <input 
-                      type="url" 
-                      value={newCloth.image_url}
-                      onChange={e => setNewCloth({...newCloth, image_url: e.target.value})}
-                      className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-xl outline-none"
-                      placeholder="https://images.unsplash.com/..."
-                    />
+                    <div className="relative">
+                      <input 
+                        type="text" 
+                        value={newCloth.image_url}
+                        onChange={e => setNewCloth({...newCloth, image_url: e.target.value})}
+                        className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-xl outline-none pr-10"
+                        placeholder="https://images.unsplash.com/..."
+                      />
+                      {newCloth.image_url && (
+                        <button 
+                          type="button"
+                          onClick={() => setNewCloth({...newCloth, image_url: ""})}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+                        >
+                          <X size={16} />
+                        </button>
+                      )}
+                    </div>
                     {newCloth.image_url && (
                       <div className="mt-4 w-full h-48 rounded-xl overflow-hidden bg-zinc-100 border border-zinc-200">
                         <img src={newCloth.image_url} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
@@ -759,7 +870,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                       onClick={() => {
                         setEditingCloth(null);
                         setNewCloth({
-                          name: "", type: CLOTHING_TYPES[0], model: MODELS[0], sizes: [], colors: [],
+                          name: "", type: CLOTHING_TYPES[0], model: MODELS[0], sizes: [], color: "",
                           age_group: AGE_GROUPS[0], weather: WEATHER_TYPES[0], image_url: "",
                           section: "A"
                         });
@@ -882,7 +993,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                       type="button"
                       onClick={() => {
                         setEditingCollection(null);
-                        setNewCollection({ name: "", event_date: "", description: "" });
+                        setNewCollection({ name: "", event_date: "", description: "", image_url: "" });
                       }}
                       className="w-full py-3 bg-zinc-100 text-zinc-600 rounded-2xl font-bold hover:bg-zinc-200 transition-all mt-2"
                     >
@@ -895,7 +1006,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
 
             <div className="lg:col-span-2">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                <h3 className="text-xl font-bold">Active Collections ({collections.length})</h3>
+                <h3 className="text-xl font-bold">Active TVC Wardrobe ({collections.length})</h3>
                 <div className="relative w-full md:w-64">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={14} />
                   <input 
@@ -1118,11 +1229,11 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                   <div>
                     <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Client</label>
                     <select 
-                      value={editRentalForm.client_id}
-                      onChange={e => setEditRentalForm({...editRentalForm, client_id: parseInt(e.target.value)})}
+                      value={editRentalForm.client_id || ""}
+                      onChange={e => setEditRentalForm({...editRentalForm, client_id: e.target.value})}
                       className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-xl outline-none"
                     >
-                      <option value={0}>Select Client</option>
+                      <option value="">Select Client</option>
                       {clients.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
                     </select>
                   </div>
@@ -1370,19 +1481,41 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
   );
 };
 
-export default function App() {
+export default function AppWrapper() {
+  return (
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
+  );
+}
+
+const Logo = ({ size = 80 }: { size?: number }) => (
+  <img 
+    src="https://i.ibb.co/Wp2BQvjv/Elegant-gold-monogram-with-rose-emblem.png" 
+    alt="Şan Closet Studio Logo" 
+    width={size} 
+    height={size} 
+    className="object-contain"
+    referrerPolicy="no-referrer"
+  />
+);
+
+function App() {
+  const { t } = useTranslation();
   const [isAdmin, setIsAdmin] = useState(false);
-  const [showLogin, setShowLogin] = useState(false);
   const [password, setPassword] = useState("");
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
+  const [showLogin, setShowLogin] = useState(false);
   const [clothes, setClothes] = useState<ClothingItem[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [showAllRentals, setShowAllRentals] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
-  const [selectedCollection, setSelectedCollection] = useState<number | null>(null);
+  const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
   const [collectionItems, setCollectionItems] = useState<ClothingItem[]>([]);
   const [showCollectionModal, setShowCollectionModal] = useState(false);
-  const [addToCollectionModal, setAddToCollectionModal] = useState<{show: boolean, clothingId: number | null}>({show: false, clothingId: null});
+  const [addToCollectionModal, setAddToCollectionModal] = useState<{show: boolean, clothingId: string | null}>({show: false, clothingId: null});
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("All");
   const [availabilityFilter, setAvailabilityFilter] = useState<"all" | "available" | "rented">("all");
@@ -1390,7 +1523,7 @@ export default function App() {
   // Rental Modal State
   const [rentalModal, setRentalModal] = useState<{
     show: boolean;
-    clothingId: number | null;
+    clothingId: string | null;
     clothingName: string;
     sizes: string[];
     color: string;
@@ -1403,7 +1536,7 @@ export default function App() {
   });
 
   const [rentalForm, setRentalForm] = useState({
-    client_id: null as number | null,
+    client_id: null as string | null,
     client_name: "", // Fallback for legacy
     client_phone: "", // Fallback for legacy
     size: "",
@@ -1413,11 +1546,126 @@ export default function App() {
   const [clientSearch, setClientSearch] = useState("");
 
   useEffect(() => {
-    fetchData();
+    const unsubAuth = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+      if (user && user.email === "miranluqman60@gmail.com") {
+        setIsAdmin(true);
+      } else {
+        setIsAdmin(false);
+      }
+    });
+    return () => unsubAuth();
   }, []);
+
+  useEffect(() => {
+    const unsubClothes = onSnapshot(query(collection(db, "clothes"), orderBy("created_at", "desc")), (snapshot) => {
+      setClothes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ClothingItem)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, "clothes");
+    });
+
+    const unsubCollections = onSnapshot(collection(db, "collections"), (snapshot) => {
+      setCollections(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Collection)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, "collections");
+    });
+
+    let unsubRentals = () => {};
+    let unsubClients = () => {};
+
+    if (isAdmin) {
+      unsubRentals = onSnapshot(query(collection(db, "rentals"), orderBy("rental_date", "desc")), (snapshot) => {
+        setRentals(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Rental)));
+      }, (error) => {
+        handleFirestoreError(error, OperationType.GET, "rentals");
+      });
+
+      unsubClients = onSnapshot(query(collection(db, "clients"), orderBy("full_name", "asc")), (snapshot) => {
+        setClients(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client)));
+      }, (error) => {
+        handleFirestoreError(error, OperationType.GET, "clients");
+      });
+    } else {
+      setRentals([]);
+      setClients([]);
+    }
+
+    return () => {
+      unsubClothes();
+      unsubCollections();
+      unsubRentals();
+      unsubClients();
+    };
+  }, [isAdmin]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
+
+  const seedSampleData = async () => {
+    setIsSubmitting(true);
+    try {
+      const samples = [
+        {
+          name: "Midnight Silk Gown",
+          type: "Dress",
+          model: "Evening",
+          sizes: ["S", "M", "L"],
+          color: "Black",
+          age_group: "Adults",
+          weather: "All Weather",
+          section: "A",
+          image_url: "https://images.unsplash.com/photo-1566174053879-31528523f8ae?auto=format&fit=crop&q=80&w=800",
+          created_at: Timestamp.now()
+        },
+        {
+          name: "Floral Garden Dress",
+          type: "Dress",
+          model: "Casual",
+          sizes: ["XS", "S", "M"],
+          color: "Floral",
+          age_group: "Teens",
+          weather: "Summer",
+          section: "B",
+          image_url: "https://images.unsplash.com/photo-1572804013307-a9a111d72f8b?auto=format&fit=crop&q=80&w=800",
+          created_at: Timestamp.now()
+        },
+        {
+          name: "Classic White Wedding",
+          type: "Dress",
+          model: "Bridal",
+          sizes: ["M", "L"],
+          color: "White",
+          age_group: "Adults",
+          weather: "All Weather",
+          section: "C",
+          image_url: "https://images.unsplash.com/photo-1594552072238-b8a33785b261?auto=format&fit=crop&q=80&w=800",
+          created_at: Timestamp.now()
+        },
+        {
+          name: "Scarlet Cocktail Dress",
+          type: "Dress",
+          model: "Party",
+          sizes: ["S", "M"],
+          color: "Red",
+          age_group: "Adults",
+          weather: "All Weather",
+          section: "A",
+          image_url: "https://images.unsplash.com/photo-1518831959646-742c3a14ebf7?auto=format&fit=crop&q=80&w=800",
+          created_at: Timestamp.now()
+        }
+      ];
+
+      for (const item of samples) {
+        await addDoc(collection(db, "clothes"), item);
+      }
+      setNotification({ message: "Sample data added successfully!", type: "success" });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, "clothes");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const [confirmModal, setConfirmModal] = useState<{show: boolean, title: string, message: string, onConfirm: () => void} | null>(null);
 
   useEffect(() => {
@@ -1427,24 +1675,7 @@ export default function App() {
     }
   }, [notification]);
 
-  const fetchData = async () => {
-    try {
-      const [clothes, collections, rentals, clients] = await Promise.all([
-        fetchJson("/api/clothes"),
-        fetchJson("/api/collections"),
-        fetchJson("/api/rentals"),
-        fetchJson("/api/clients")
-      ]);
-      setClothes(clothes);
-      setCollections(collections);
-      setRentals(rentals);
-      setClients(clients);
-    } catch (err) {
-      console.error("Failed to fetch data:", err);
-    }
-  };
-
-  const getAvailableSizes = (clothingId: number, color: string) => {
+  const getAvailableSizes = (clothingId: string, color: string) => {
     const item = clothes.find(c => c.id === clothingId);
     if (!item) return [];
     return item.sizes.filter(size => {
@@ -1485,11 +1716,15 @@ export default function App() {
     setClientSearch("");
   };
 
-  const handleCollectionClick = async (collection: Collection) => {
+  const handleCollectionClick = async (col: Collection) => {
     try {
-      const items = await fetchJson(`/api/collections/${collection.id}/items`);
-      setCollectionItems(items);
-      setSelectedCollection(collection.id);
+      if (!col.itemIds || col.itemIds.length === 0) {
+        setCollectionItems([]);
+      } else {
+        const items = clothes.filter(c => col.itemIds?.includes(c.id));
+        setCollectionItems(items);
+      }
+      setSelectedCollection(col.id);
       setShowCollectionModal(true);
     } catch (err) {
       setNotification({ message: "Failed to load collection items.", type: "error" });
@@ -1504,29 +1739,29 @@ export default function App() {
     }
     setIsSubmitting(true);
     try {
-      const data = await fetchJson("/api/rentals", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          clothing_id: rentalModal.clothingId, 
-          ...rentalForm 
-        })
+      const client = clients.find(c => c.id === rentalForm.client_id);
+      await addDoc(collection(db, "rentals"), {
+        clothing_id: rentalModal.clothingId,
+        clothing_name: rentalModal.clothingName,
+        client_id: rentalForm.client_id,
+        client_name: client?.full_name || "",
+        client_phone: client?.phone || "",
+        size: rentalForm.size,
+        color: rentalForm.color,
+        rental_date: Timestamp.now(),
+        status: "active",
+        image_url: clothes.find(c => c.id === rentalModal.clothingId)?.image_url || ""
       });
-      if (data.success) {
-        setNotification({ message: "Item rented successfully!", type: "success" });
-        setRentalModal({ ...rentalModal, show: false });
-        fetchData();
-      } else {
-        setNotification({ message: data.message || "Failed to rent item.", type: "error" });
-      }
+      setNotification({ message: "Item rented successfully!", type: "success" });
+      setRentalModal({ ...rentalModal, show: false });
     } catch (err: any) {
-      setNotification({ message: err.message || "Failed to rent item. Check console for details.", type: "error" });
+      setNotification({ message: err.message || "Failed to rent item.", type: "error" });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleReturn = async (rental_id: number) => {
+  const handleReturn = async (rental_id: string) => {
     setConfirmModal({
       show: true,
       title: "Return Item",
@@ -1535,15 +1770,11 @@ export default function App() {
         setConfirmModal(null);
         setIsSubmitting(true);
         try {
-          const data = await fetchJson(`/api/rentals/${rental_id}/return`, {
-            method: "POST"
+          await updateDoc(doc(db, "rentals", rental_id), {
+            status: "returned",
+            returned_at: Timestamp.now()
           });
-          if (data.success) {
-            setNotification({ message: "Item returned successfully!", type: "success" });
-            fetchData();
-          } else {
-            setNotification({ message: "Failed to return item.", type: "error" });
-          }
+          setNotification({ message: "Item returned successfully!", type: "success" });
         } catch (err) {
           setNotification({ message: "Failed to return item.", type: "error" });
         } finally {
@@ -1553,7 +1784,7 @@ export default function App() {
     });
   };
 
-  const handleDeleteRental = async (rental_id: number) => {
+  const handleDeleteRental = async (rental_id: string) => {
     setConfirmModal({
       show: true,
       title: "Delete Record",
@@ -1562,15 +1793,8 @@ export default function App() {
         setConfirmModal(null);
         setIsSubmitting(true);
         try {
-          const data = await fetchJson(`/api/rentals/${rental_id}`, {
-            method: "DELETE"
-          });
-          if (data.success) {
-            setNotification({ message: "Rental record deleted successfully!", type: "success" });
-            fetchData();
-          } else {
-            setNotification({ message: "Failed to delete rental record.", type: "error" });
-          }
+          await deleteDoc(doc(db, "rentals", rental_id));
+          setNotification({ message: "Rental record deleted successfully!", type: "success" });
         } catch (err) {
           setNotification({ message: "Failed to delete rental record.", type: "error" });
         } finally {
@@ -1580,27 +1804,36 @@ export default function App() {
     });
   };
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLogin = async () => {
     setIsSubmitting(true);
     try {
-      const data = await fetchJson("/api/login", {
+      const response = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password })
+        body: JSON.stringify({ password }),
       });
-      if (data.success) {
+      if (response.ok) {
         setIsAdmin(true);
+        localStorage.setItem('adminLoginTime', Date.now().toString());
+        setNotification({ message: t("Login successful!"), type: "success" });
         setShowLogin(false);
         setPassword("");
-        setNotification({ message: "Login successful!", type: "success" });
       } else {
-        setNotification({ message: "Wrong password!", type: "error" });
+        setNotification({ message: t("Invalid password."), type: "error" });
       }
     } catch (err) {
-      setNotification({ message: "Login failed.", type: "error" });
+      setNotification({ message: t("Login failed."), type: "error" });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      setIsAdmin(false);
+      setNotification({ message: "Logged out successfully!", type: "success" });
+    } catch (err) {
+      setNotification({ message: "Logout failed.", type: "error" });
     }
   };
 
@@ -1627,22 +1860,33 @@ export default function App() {
   });
 
   return (
-    <div className="min-h-screen bg-[#F8F8F8] text-zinc-900 font-sans selection:bg-black selection:text-white">
+    <div dir="auto" className="min-h-screen bg-[#F8F8F8] text-zinc-900 font-sans selection:bg-black selection:text-white">
       <Navbar 
         isAdmin={isAdmin} 
-        onLogin={() => setShowLogin(true)} 
-        onLogout={() => setIsAdmin(false)} 
+        onLogout={handleLogout}
+        onOpenAdmin={() => {
+          const lastLogin = localStorage.getItem('adminLoginTime');
+          if (lastLogin && Date.now() - parseInt(lastLogin) < 5 * 60 * 1000) {
+            setShowAdminPanel(true);
+          } else {
+            setShowLogin(true);
+          }
+        }}
+        t={t}
       />
 
       <main className="pt-32 pb-24 px-6 max-w-7xl mx-auto">
         {/* Hero Section */}
         <section className="mb-20 text-center">
+          <div className="flex justify-center mb-6">
+            <Logo size={120} />
+          </div>
           <motion.h2 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-6xl md:text-8xl font-black tracking-tighter mb-6"
+            className="text-4xl md:text-6xl font-black tracking-tighter mb-6"
           >
-            DRESS TO <span className="text-zinc-400">IMPRESS.</span>
+            {t('DRESS TO IMPRESS').split(' ').slice(0, 2).join(' ')} <span className="text-zinc-400">{t('DRESS TO IMPRESS').split(' ').slice(2).join(' ')}</span>
           </motion.h2>
           <motion.p 
             initial={{ opacity: 0, y: 20 }}
@@ -1650,8 +1894,7 @@ export default function App() {
             transition={{ delay: 0.1 }}
             className="text-xl text-zinc-500 max-w-2xl mx-auto"
           >
-            AD Media Dressing Room: Your ultimate wardrobe management system. 
-            Organize your clothes, create collections for events, and always look your best.
+            Şan Closet Studio: {t('Your ultimate wardrobe management system. Organize your clothes, create collections for events, and always look your best.')}
           </motion.p>
         </section>
 
@@ -1659,8 +1902,8 @@ export default function App() {
         <section className="mb-20">
           <div className="flex justify-between items-end mb-8">
             <div>
-              <h3 className="text-2xl font-bold tracking-tight">Featured Collections</h3>
-              <p className="text-zinc-500">Curated sets for your upcoming events.</p>
+              <h3 className="text-2xl font-bold tracking-tight">TVC Wardrobe History</h3>
+              <p className="text-zinc-500">Clothing sets used in completed TV commercial projects.</p>
             </div>
             <button className="text-sm font-bold uppercase tracking-widest text-zinc-400 hover:text-black transition-colors">
               View All
@@ -1807,7 +2050,6 @@ export default function App() {
                     key={item.id} 
                     item={item} 
                     onRent={() => handleRentClick(item)}
-                    onAddToCollection={isAdmin ? (id) => setAddToCollectionModal({show: true, clothingId: id}) : undefined}
                     activeRentals={rentals.filter(r => r.clothing_id === item.id && r.status === 'active')}
                   />
                 ))}
@@ -1956,10 +2198,13 @@ export default function App() {
                       key={col.id}
                       onClick={async () => {
                         try {
-                          await fetchJson(`/api/collections/${col.id}/items`, {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ clothing_id: addToCollectionModal.clothingId })
+                          const currentIds = col.itemIds || [];
+                          if (currentIds.includes(addToCollectionModal.clothingId!)) {
+                            setNotification({ message: "Item already in this collection", type: "error" });
+                            return;
+                          }
+                          await updateDoc(doc(db, "collections", col.id), {
+                            itemIds: arrayUnion(addToCollectionModal.clothingId)
                           });
                           setNotification({ message: "Added to collection!", type: "success" });
                           setAddToCollectionModal({ show: false, clothingId: null });
@@ -2034,14 +2279,14 @@ export default function App() {
                           referrerPolicy="no-referrer"
                         />
                         <div className="absolute top-4 right-4 bg-white/90 backdrop-blur px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest">
-                          {item.category}
+                          {item.type}
                         </div>
                       </div>
                       <div className="p-6">
                         <div className="flex justify-between items-start mb-2">
                           <h3 className="text-xl font-bold">{item.name}</h3>
                         </div>
-                        <p className="text-zinc-500 text-sm mb-4 line-clamp-2">{item.description}</p>
+                        <p className="text-zinc-500 text-sm mb-4 line-clamp-2">{item.model}</p>
                         
                         <div className="flex flex-wrap gap-2 mb-6">
                           {item.sizes.map(size => (
@@ -2065,8 +2310,8 @@ export default function App() {
                             <button 
                               onClick={async () => {
                                 try {
-                                  await fetchJson(`/api/collections/${selectedCollection}/items/${item.id}`, {
-                                    method: "DELETE"
+                                  await updateDoc(doc(db, "collections", selectedCollection), {
+                                    itemIds: arrayRemove(item.id)
                                   });
                                   setCollectionItems(collectionItems.filter(i => i.id !== item.id));
                                   setNotification({ message: "Item removed from collection.", type: "success" });
@@ -2106,44 +2351,39 @@ export default function App() {
               className="bg-white w-full max-w-md rounded-[2.5rem] p-10 shadow-2xl"
             >
               <div className="text-center mb-8">
-                <div className="w-16 h-16 bg-black rounded-2xl flex items-center justify-center text-white font-bold text-2xl mx-auto mb-6">AD</div>
-                <h2 className="text-3xl font-black tracking-tighter">Admin Access</h2>
-                <p className="text-zinc-500 mt-2">Enter the secret password to manage the dressing room.</p>
+                <div className="mb-6 flex justify-center">
+                  <Logo size={64} />
+                </div>
+                <h2 className="text-3xl font-black tracking-tighter">{t('Admin Access')}</h2>
+                <p className="text-zinc-500 mt-2">{t('Enter admin password to manage the dressing room.')}</p>
               </div>
               
-              <form onSubmit={handleLogin} className="space-y-6">
-                <div>
-                  <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Password</label>
-                  <input 
-                    type="password" 
-                    required
-                    autoFocus
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    className="w-full px-6 py-4 bg-zinc-50 border border-zinc-200 rounded-2xl outline-none focus:ring-2 focus:ring-black transition-all text-center text-xl tracking-[0.5em]"
-                    placeholder="••••••••"
-                  />
-                </div>
-                <div className="flex gap-4">
-                  <button 
-                    type="button"
-                    onClick={() => setShowLogin(false)}
-                    className="flex-1 py-4 bg-zinc-100 hover:bg-zinc-200 text-zinc-600 rounded-2xl font-bold transition-all"
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    type="submit"
-                    disabled={isSubmitting}
-                    className={`flex-[2] py-4 bg-black text-white rounded-2xl font-black uppercase tracking-widest hover:bg-zinc-800 transition-all shadow-lg flex items-center justify-center gap-2 ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    {isSubmitting ? (
-                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    ) : null}
-                    Login
-                  </button>
-                </div>
-              </form>
+              <div className="space-y-6">
+                <input 
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter password"
+                  className="w-full py-4 px-6 bg-zinc-100 rounded-2xl font-bold text-zinc-900 focus:outline-none focus:ring-2 focus:ring-black transition-all"
+                />
+                <button 
+                  onClick={handleLogin}
+                  disabled={isSubmitting}
+                  className={`w-full py-4 bg-black text-white rounded-2xl font-black uppercase tracking-widest hover:bg-zinc-800 transition-all shadow-lg flex items-center justify-center gap-3 ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {isSubmitting ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    "Login"
+                  )}
+                </button>
+                <button 
+                  onClick={() => setShowLogin(false)}
+                  className="w-full py-4 bg-zinc-100 hover:bg-zinc-200 text-zinc-600 rounded-2xl font-bold transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}
@@ -2204,19 +2444,20 @@ export default function App() {
 
       {/* Admin Panel Overlay */}
       <AnimatePresence>
-        {isAdmin && (
+        {showAdminPanel && isAdmin && (
           <AdminPanel 
-            onClose={() => setIsAdmin(false)} 
+            onClose={() => setShowAdminPanel(false)} 
             rentals={rentals}
             clothes={clothes}
             collections={collections}
             clients={clients}
             onReturn={handleReturn}
             onDeleteRental={handleDeleteRental}
-            onRefresh={fetchData}
             setNotification={setNotification}
             setConfirmModal={setConfirmModal}
             setAddToCollectionModal={setAddToCollectionModal}
+            seedSampleData={seedSampleData}
+            isSubmitting={isSubmitting}
           />
         )}
       </AnimatePresence>
@@ -2225,10 +2466,11 @@ export default function App() {
       <footer className="border-t border-zinc-200 py-12 px-6">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center text-white font-bold text-sm">AD</div>
-            <span className="font-bold tracking-tight">AD Media Dressing Room</span>
+            <Logo size={32} />
+            <span className="font-bold tracking-tight">Şan Closet Studio</span>
           </div>
-          <p className="text-zinc-400 text-sm">© 2024 AD Media. All rights reserved.</p>
+          <LanguageSwitcher />
+          <p className="text-zinc-400 text-sm">© 2026 Şan Closet Studio. All rights reserved.</p>
           <div className="flex gap-6 text-zinc-400 text-sm font-medium">
             <a href="#" className="hover:text-black transition-colors">Privacy</a>
             <a href="#" className="hover:text-black transition-colors">Terms</a>

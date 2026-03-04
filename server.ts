@@ -115,7 +115,7 @@ if (clothesCount.count === 0) {
     {
       name: "Classic White Tee",
       type: "T-shirt",
-      model: "Normal",
+      model: "Casual",
       sizes: ["XS", "S", "M", "L", "XL", "XXL"],
       color: "White",
       age_group: "All Ages",
@@ -125,12 +125,42 @@ if (clothesCount.count === 0) {
     {
       name: "Urban Cargo Pants",
       type: "Pants",
-      model: "Casual",
+      model: "Modern",
       sizes: ["30", "32", "34", "36"],
       color: "Olive",
       age_group: "Teens",
       weather: "All Weather",
       image_url: "https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?auto=format&fit=crop&q=80&w=800"
+    },
+    {
+      name: "Formal Tuxedo",
+      type: "Suit",
+      model: "Formal",
+      sizes: ["46", "48", "50", "52"],
+      color: "Navy",
+      age_group: "Adults",
+      weather: "Cold",
+      image_url: "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?auto=format&fit=crop&q=80&w=800"
+    },
+    {
+      name: "Vintage Floral Dress",
+      type: "Dress",
+      model: "Vintage",
+      sizes: ["S", "M", "L"],
+      color: "Floral",
+      age_group: "Adults",
+      weather: "Hot",
+      image_url: "https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?auto=format&fit=crop&q=80&w=800"
+    },
+    {
+      name: "Leather Biker Jacket",
+      type: "Jacket",
+      model: "Oversized",
+      sizes: ["M", "L", "XL"],
+      color: "Brown",
+      age_group: "Adults",
+      weather: "Cold",
+      image_url: "https://images.unsplash.com/photo-1551028719-00167b16e7ac?auto=format&fit=crop&q=80&w=800"
     }
   ];
 

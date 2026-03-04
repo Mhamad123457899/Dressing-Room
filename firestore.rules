@@ -1,0 +1,84 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: clothes
+    // Fields: name, type, model, sizes, color, age_group, weather, image_url, section, created_at
+    //
+    // Collection: collections
+    // Fields: name, event_date, description, image_url, itemIds
+    //
+    // Collection: clients
+    // Fields: full_name, phone, id_image_url, company_name, company_phone, created_at
+    //
+    // Collection: rentals
+    // Fields: clothing_id, clothing_name, image_url, client_id, client_name, client_phone, size, color, rental_date, returned_at, status
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (request.auth.token.email == "miranluqman60@gmail.com" && request.auth.token.email_verified == true);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidClothing(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.type is string &&
+             data.model is string &&
+             data.sizes is list &&
+             data.color is string &&
+             data.age_group is string &&
+             data.weather is string;
+    }
+
+    function isValidClient(data) {
+      return data.full_name is string && data.full_name.size() > 0 && data.full_name.size() < 100 &&
+             data.phone is string && data.phone.size() > 0 && data.phone.size() < 20;
+    }
+
+    function isValidRental(data) {
+      return data.clothing_id is string &&
+             data.client_name is string &&
+             data.size is string &&
+             data.color is string &&
+             data.status in ['active', 'returned'];
+    }
+
+    // Rules
+    match /clothes/{clothId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /collections/{collectionId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /clients/{clientId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    match /rentals/{rentalId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+    
+    match /test/connection {
+      allow read: if true;
+    }
+  }
+}

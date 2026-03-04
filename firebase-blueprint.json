@@ -1,0 +1,86 @@
+{
+  "entities": {
+    "ClothingItem": {
+      "title": "Clothing Item",
+      "description": "An item of clothing in the inventory",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "model": { "type": "string" },
+        "sizes": { "type": "array", "items": { "type": "string" } },
+        "color": { "type": "string" },
+        "age_group": { "type": "string" },
+        "weather": { "type": "string" },
+        "image_url": { "type": "string" },
+        "section": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "type", "model", "sizes", "color", "age_group", "weather"]
+    },
+    "Collection": {
+      "title": "Collection",
+      "description": "A group of clothing items for an event",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "event_date": { "type": "string" },
+        "description": { "type": "string" },
+        "image_url": { "type": "string" },
+        "itemIds": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["name"]
+    },
+    "Client": {
+      "title": "Client",
+      "description": "A client who rents clothes",
+      "type": "object",
+      "properties": {
+        "full_name": { "type": "string" },
+        "phone": { "type": "string" },
+        "id_image_url": { "type": "string" },
+        "company_name": { "type": "string" },
+        "company_phone": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["full_name", "phone"]
+    },
+    "Rental": {
+      "title": "Rental",
+      "description": "A record of a clothing rental",
+      "type": "object",
+      "properties": {
+        "clothing_id": { "type": "string" },
+        "clothing_name": { "type": "string" },
+        "image_url": { "type": "string" },
+        "client_id": { "type": "string" },
+        "client_name": { "type": "string" },
+        "client_phone": { "type": "string" },
+        "size": { "type": "string" },
+        "color": { "type": "string" },
+        "rental_date": { "type": "string", "format": "date-time" },
+        "returned_at": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["active", "returned"] }
+      },
+      "required": ["clothing_id", "client_name", "size", "color", "status"]
+    }
+  },
+  "firestore": {
+    "/clothes/{clothId}": {
+      "schema": "ClothingItem",
+      "description": "Inventory of clothes"
+    },
+    "/collections/{collectionId}": {
+      "schema": "Collection",
+      "description": "Curated collections"
+    },
+    "/clients/{clientId}": {
+      "schema": "Client",
+      "description": "Customer database"
+    },
+    "/rentals/{rentalId}": {
+      "schema": "Rental",
+      "description": "Rental transactions"
+    }
+  }
+}
