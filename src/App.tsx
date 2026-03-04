@@ -285,6 +285,8 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
   const [rentalFilter, setRentalFilter] = useState<"active" | "all">("active");
   const [rentalSearch, setRentalSearch] = useState("");
   const [clientSearch, setClientSearch] = useState("");
+  const [inventorySearch, setInventorySearch] = useState("");
+  const [collectionSearch, setCollectionSearch] = useState("");
   const panelRef = useRef<HTMLDivElement>(null);
   
   // Form States
@@ -580,7 +582,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
 
         <div className="flex flex-wrap gap-4 mb-12 border-b border-zinc-100 pb-4">
           <button 
-            onClick={() => setActiveTab("clothes")}
+            onClick={() => { setActiveTab("clothes"); setInventorySearch(""); }}
             className={`px-6 py-2 rounded-full font-bold transition-all ${
               activeTab === "clothes" ? "bg-black text-white" : "text-zinc-400 hover:text-zinc-600"
             }`}
@@ -588,7 +590,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
             Inventory
           </button>
           <button 
-            onClick={() => setActiveTab("collections")}
+            onClick={() => { setActiveTab("collections"); setCollectionSearch(""); }}
             className={`px-6 py-2 rounded-full font-bold transition-all ${
               activeTab === "collections" ? "bg-black text-white" : "text-zinc-400 hover:text-zinc-600"
             }`}
@@ -596,7 +598,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
             Collections
           </button>
           <button 
-            onClick={() => setActiveTab("clients")}
+            onClick={() => { setActiveTab("clients"); setClientSearch(""); }}
             className={`px-6 py-2 rounded-full font-bold transition-all ${
               activeTab === "clients" ? "bg-black text-white" : "text-zinc-400 hover:text-zinc-600"
             }`}
@@ -604,7 +606,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
             Client Accounts
           </button>
           <button 
-            onClick={() => setActiveTab("rentals")}
+            onClick={() => { setActiveTab("rentals"); setRentalSearch(""); }}
             className={`px-6 py-2 rounded-full font-bold transition-all ${
               activeTab === "rentals" ? "bg-black text-white" : "text-zinc-400 hover:text-zinc-600"
             }`}
@@ -772,9 +774,29 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
             </div>
 
             <div className="lg:col-span-2">
-              <h3 className="text-xl font-bold mb-6">Current Inventory ({clothes.length})</h3>
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                <h3 className="text-xl font-bold">Current Inventory ({clothes.length})</h3>
+                <div className="relative w-full md:w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={14} />
+                  <input 
+                    type="text" 
+                    placeholder="Search inventory..."
+                    value={inventorySearch}
+                    onChange={e => setInventorySearch(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2 bg-white border border-zinc-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-black"
+                  />
+                </div>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {clothes.map(item => (
+                {clothes
+                  .filter(item => {
+                    const s = inventorySearch.toLowerCase();
+                    return item.name.toLowerCase().includes(s) || 
+                           item.type.toLowerCase().includes(s) ||
+                           item.sizes.some(sz => sz.toLowerCase().includes(s)) ||
+                           item.color.toLowerCase().includes(s);
+                  })
+                  .map(item => (
                   <div key={item.id} className="relative">
                     <ClothingCard 
                       item={item} 
@@ -872,9 +894,26 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
             </div>
 
             <div className="lg:col-span-2">
-              <h3 className="text-xl font-bold mb-6">Active Collections ({collections.length})</h3>
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                <h3 className="text-xl font-bold">Active Collections ({collections.length})</h3>
+                <div className="relative w-full md:w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={14} />
+                  <input 
+                    type="text" 
+                    placeholder="Search collections..."
+                    value={collectionSearch}
+                    onChange={e => setCollectionSearch(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2 bg-white border border-zinc-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-black"
+                  />
+                </div>
+              </div>
               <div className="space-y-6">
-                {collections.map(col => (
+                {collections
+                  .filter(col => {
+                    const s = collectionSearch.toLowerCase();
+                    return col.name.toLowerCase().includes(s) || col.description.toLowerCase().includes(s);
+                  })
+                  .map(col => (
                   <div key={col.id} className="bg-white p-6 rounded-3xl border border-zinc-200 flex justify-between items-center group hover:border-black transition-all">
                     <div className="flex items-center gap-4">
                       {col.image_url && (
@@ -996,22 +1035,27 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
             </div>
 
             <div className="lg:col-span-2">
-              <div className="flex justify-between items-center mb-6">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                 <h3 className="text-xl font-bold">Saved Clients ({clients.length})</h3>
-                <div className="relative w-64">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
+                <div className="relative w-full md:w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={14} />
                   <input 
                     type="text" 
                     placeholder="Search clients..."
                     value={clientSearch}
                     onChange={e => setClientSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 bg-zinc-50 border border-zinc-200 rounded-xl outline-none"
+                    className="w-full pl-9 pr-4 py-2 bg-white border border-zinc-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-black"
                   />
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {clients
-                  .filter(c => c.full_name.toLowerCase().includes(clientSearch.toLowerCase()) || c.phone.includes(clientSearch))
+                  .filter(client => {
+                    const s = clientSearch.toLowerCase();
+                    return client.full_name.toLowerCase().includes(s) || 
+                           client.phone.toLowerCase().includes(s) ||
+                           (client.company_name && client.company_name.toLowerCase().includes(s));
+                  })
                   .map(client => (
                   <div key={client.id} className="bg-white p-6 rounded-3xl border border-zinc-200 group hover:border-black transition-all">
                     <div className="flex items-center gap-4 mb-4">
@@ -1163,10 +1207,14 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
             <div className="grid grid-cols-1 gap-4">
               {rentals
                 .filter(r => rentalFilter === "all" || r.status === "active")
-                .filter(r => 
-                  (r.client_full_name || r.client_name || "").toLowerCase().includes(rentalSearch.toLowerCase()) || 
-                  (r.client_phone_number || r.client_phone || "").includes(rentalSearch)
-                )
+                .filter(r => {
+                  const s = rentalSearch.toLowerCase();
+                  return (r.client_full_name || r.client_name || "").toLowerCase().includes(s) || 
+                         (r.client_phone_number || r.client_phone || "").includes(s) ||
+                         r.clothing_name.toLowerCase().includes(s) ||
+                         r.size.toLowerCase().includes(s) ||
+                         r.color.toLowerCase().includes(s);
+                })
                 .map(rental => (
                 <div key={rental.id} className={`bg-white p-6 rounded-3xl border border-zinc-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 transition-all ${rental.status === 'returned' ? 'opacity-60 grayscale-[0.3]' : ''}`}>
                   <div className="flex items-center gap-4">
@@ -1337,6 +1385,7 @@ export default function App() {
   const [addToCollectionModal, setAddToCollectionModal] = useState<{show: boolean, clothingId: number | null}>({show: false, clothingId: null});
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("All");
+  const [availabilityFilter, setAvailabilityFilter] = useState<"all" | "available" | "rented">("all");
 
   // Rental Modal State
   const [rentalModal, setRentalModal] = useState<{
@@ -1560,12 +1609,19 @@ export default function App() {
     const totalCombinations = item.sizes.length;
     const isFullyRented = activeRentals.length >= totalCombinations;
 
+    // Availability filter
+    if (availabilityFilter === "available" && isFullyRented) return false;
+    if (availabilityFilter === "rented" && !isFullyRented) return false;
+
     if (!isAdmin && isFullyRented) {
       return false; // Hide fully rented items from non-admins
     }
 
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          item.type.toLowerCase().includes(searchQuery.toLowerCase());
+    const searchLower = searchQuery.toLowerCase();
+    const matchesSearch = item.name.toLowerCase().includes(searchLower) || 
+                          item.type.toLowerCase().includes(searchLower) ||
+                          item.sizes.some(s => s.toLowerCase().includes(searchLower)) ||
+                          item.color.toLowerCase().includes(searchLower);
     const matchesFilter = filterType === "All" || item.type === filterType;
     return matchesSearch && matchesFilter;
   });
@@ -1703,7 +1759,7 @@ export default function App() {
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
                 <input 
                   type="text" 
-                  placeholder="Search clothes..."
+                  placeholder="Search by name, type, size, or color..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   className="w-full pl-12 pr-4 py-3 bg-white border border-zinc-200 rounded-2xl outline-none focus:ring-2 focus:ring-black transition-all"
@@ -1718,6 +1774,18 @@ export default function App() {
                 >
                   <option value="All">All Types</option>
                   {CLOTHING_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <div className="flex items-center gap-2 px-4 py-3 bg-white border border-zinc-200 rounded-2xl">
+                <Check size={18} className="text-zinc-400" />
+                <select 
+                  value={availabilityFilter}
+                  onChange={e => setAvailabilityFilter(e.target.value as any)}
+                  className="bg-transparent outline-none font-medium text-sm"
+                >
+                  <option value="all">Any Status</option>
+                  <option value="available">Available</option>
+                  <option value="rented">Rented</option>
                 </select>
               </div>
             </div>
