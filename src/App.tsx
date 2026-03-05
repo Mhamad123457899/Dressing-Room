@@ -2254,26 +2254,32 @@ function App() {
   };
 
   const handleLogin = async () => {
+    if (!currentCompany) return;
     setIsSubmitting(true);
     try {
       const trimmedPassword = password.trim();
-      console.log("Sending password:", trimmedPassword);
-      const response = await fetch("/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password: trimmedPassword }),
-      });
-      if (response.ok) {
-        setIsAdmin(true);
-        setShowAdminPanel(true);
-        localStorage.setItem('adminLoginTime', Date.now().toString());
-        setNotification({ message: t("Login successful!"), type: "success" });
-        setShowLogin(false);
-        setPassword("");
+      
+      // Get the company secret document from Firestore
+      const docRef = doc(db, "company_secrets", currentCompany.id);
+      const docSnap = await getDoc(docRef);
+      
+      if (docSnap.exists()) {
+        const secretData = docSnap.data();
+        if (secretData.password === trimmedPassword) {
+          setIsAdmin(true);
+          setShowAdminPanel(true);
+          localStorage.setItem('adminLoginTime', Date.now().toString());
+          setNotification({ message: t("Login successful!"), type: "success" });
+          setShowLogin(false);
+          setPassword("");
+        } else {
+          setNotification({ message: t("Invalid password."), type: "error" });
+        }
       } else {
-        setNotification({ message: t("Invalid password."), type: "error" });
+        setNotification({ message: t("Company secrets not found."), type: "error" });
       }
     } catch (err) {
+      console.error("Login error:", err);
       setNotification({ message: t("Login failed."), type: "error" });
     } finally {
       setIsSubmitting(false);
@@ -2423,7 +2429,7 @@ function App() {
                         navigator.clipboard.writeText(shareUrl);
                         setNotification({ message: "Collection link copied!", type: "success" });
                       }}
-                      className={`p-2 rounded-full transition-all ${styles.secondary} hover:scale-110`}
+                      className={`p-2 rounded-full transition-all bg-zinc-200 text-zinc-900 hover:scale-110`}
                       title="Share Collection"
                     >
                       <Share2 size={18} />
