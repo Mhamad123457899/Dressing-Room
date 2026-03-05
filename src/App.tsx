@@ -473,7 +473,7 @@ const ClothingCard = ({ item, onAddToCollection, onRent, isRented, activeRentals
               alert('Item link copied to clipboard!');
             }
           }}
-          className={`absolute top-4 right-4 p-2 backdrop-blur-md rounded-full shadow-lg transition-all hover:scale-110 ${theme === 'dark' ? 'bg-white/20 text-white hover:bg-white/40' : 'bg-black/20 text-white hover:bg-black/40'}`}
+          className={`absolute top-4 right-4 p-2 backdrop-blur-md rounded-full shadow-lg transition-all hover:scale-110 border ${theme === 'dark' ? 'bg-white/40 text-white hover:bg-white/60 border-white/20' : 'bg-black/40 text-white hover:bg-black/60 border-black/20'}`}
           title="Share Item"
         >
           <Share2 size={16} />
