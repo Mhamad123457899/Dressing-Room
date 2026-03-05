@@ -253,7 +253,7 @@ const THEMES = {
     accent: "text-zinc-500",
     muted: "text-zinc-400",
     border: "border-zinc-200",
-    input: "bg-white border-zinc-200 focus:border-black",
+    input: "bg-white border-zinc-200 focus:border-black text-zinc-900 placeholder:text-zinc-400",
     modal: "bg-white"
   },
   dark: {
@@ -266,7 +266,7 @@ const THEMES = {
     accent: "text-zinc-400",
     muted: "text-zinc-500",
     border: "border-zinc-800",
-    input: "bg-zinc-900 border-zinc-800 focus:border-white",
+    input: "bg-zinc-900 border-zinc-800 focus:border-white text-zinc-100 placeholder:text-zinc-500",
     modal: "bg-zinc-900"
   },
   comfort: {
@@ -279,7 +279,7 @@ const THEMES = {
     accent: "text-[#93a1a1]",
     muted: "text-[#93a1a1]",
     border: "border-[#d3cbb7]",
-    input: "bg-[#eee8d5] border-[#d3cbb7] focus:border-[#b58900]",
+    input: "bg-[#eee8d5] border-[#d3cbb7] focus:border-[#b58900] text-[#586e75] placeholder:text-[#93a1a1]",
     modal: "bg-[#fdf6e3]"
   },
   rose: {
@@ -292,7 +292,7 @@ const THEMES = {
     accent: "text-[#be123c]",
     muted: "text-[#fda4af]",
     border: "border-[#fecdd3]",
-    input: "bg-white border-[#fecdd3] focus:border-[#e11d48]",
+    input: "bg-white border-[#fecdd3] focus:border-[#e11d48] text-[#9f1239] placeholder:text-[#fda4af]",
     modal: "bg-[#fff1f2]"
   }
 };
@@ -1778,7 +1778,7 @@ const CompanyPortal = ({ onLogin }: { onLogin: (company: Company) => void }) => 
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className={`block text-[10px] font-bold uppercase tracking-widest mb-2 ${styles.muted}`}>Company Name</label>
+            <label className={`block text-[10px] font-bold uppercase tracking-widest mb-2 ${styles.text} opacity-70`}>Company Name</label>
             <input 
               type="text"
               required
@@ -1789,7 +1789,7 @@ const CompanyPortal = ({ onLogin }: { onLogin: (company: Company) => void }) => 
             />
           </div>
           <div>
-            <label className={`block text-[10px] font-bold uppercase tracking-widest mb-2 ${styles.muted}`}>Password</label>
+            <label className={`block text-[10px] font-bold uppercase tracking-widest mb-2 ${styles.text} opacity-70`}>Password</label>
             <input 
               type="password"
               required
