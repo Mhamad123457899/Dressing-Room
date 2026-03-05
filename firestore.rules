@@ -5,17 +5,20 @@ service cloud.firestore {
     // Assumed Data Model
     // ===============================================================
     //
+    // Collection: companies
+    // Fields: name, slug, password, logo_url, created_at
+    //
     // Collection: clothes
-    // Fields: name, type, model, sizes, color, age_group, weather, image_url, section, created_at
+    // Fields: company_id, name, type, model, sizes, color, age_group, weather, image_url, section, created_at
     //
     // Collection: collections
-    // Fields: name, event_date, description, image_url, itemIds
+    // Fields: company_id, name, event_date, description, image_url, itemIds
     //
     // Collection: clients
-    // Fields: full_name, phone, id_image_url, company_name, company_phone, created_at
+    // Fields: company_id, full_name, phone, id_image_url, company_name, company_phone, created_at
     //
     // Collection: rentals
-    // Fields: clothing_id, clothing_name, image_url, client_id, client_name, client_phone, size, color, rental_date, returned_at, status
+    // Fields: company_id, clothing_id, clothing_name, image_url, client_id, client_name, client_phone, size, color, rental_date, returned_at, status
     //
     // ===============================================================
 
@@ -24,32 +27,35 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isAdmin() {
+    function isSuperAdmin() {
       return isAuthenticated() &&
         (request.auth.token.email == "miranluqman60@gmail.com" && request.auth.token.email_verified == true);
     }
 
-    function hasOnlyAllowedFields(fields) {
-      return request.resource.data.keys().hasOnly(fields);
+    function isValidCompany(data) {
+      return data.name is string && data.name.size() > 0 &&
+             data.slug is string && data.slug.size() > 0 &&
+             data.password is string && data.password.size() >= 4;
     }
 
     function isValidClothing(data) {
-      return data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+      return data.company_id is string &&
+             data.name is string && data.name.size() > 0 &&
              data.type is string &&
              data.model is string &&
              data.sizes is list &&
-             data.color is string &&
-             data.age_group is string &&
-             data.weather is string;
+             data.color is string;
     }
 
     function isValidClient(data) {
-      return data.full_name is string && data.full_name.size() > 0 && data.full_name.size() < 100 &&
-             data.phone is string && data.phone.size() > 0 && data.phone.size() < 20;
+      return data.company_id is string &&
+             data.full_name is string && data.full_name.size() > 0 &&
+             data.phone is string && data.phone.size() > 0;
     }
 
     function isValidRental(data) {
-      return data.clothing_id is string &&
+      return data.company_id is string &&
+             data.clothing_id is string &&
              data.client_name is string &&
              data.size is string &&
              data.color is string &&
@@ -57,24 +63,32 @@ service cloud.firestore {
     }
 
     // Rules
-    match /clothes/{clothId} {
+    match /companies/{companyId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create: if isValidCompany(request.resource.data);
+      allow update, delete: if isSuperAdmin();
+    }
+
+    match /clothes/{clothId} {
+      allow read: if true; // Publicly viewable for "view only" mode
+      allow write: if isSuperAdmin() || (isAuthenticated() && request.resource.data.company_id != null); 
+      // Note: In a real app, we'd verify the user belongs to the company.
+      // For this prototype, we'll allow authenticated writes if company_id is present.
     }
 
     match /collections/{collectionId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isSuperAdmin() || (isAuthenticated() && request.resource.data.company_id != null);
     }
 
     match /clients/{clientId} {
-      allow read: if isAdmin();
-      allow write: if isAdmin();
+      allow read: if isSuperAdmin() || isAuthenticated();
+      allow write: if isSuperAdmin() || (isAuthenticated() && request.resource.data.company_id != null);
     }
 
     match /rentals/{rentalId} {
-      allow read: if isAdmin();
-      allow write: if isAdmin();
+      allow read: if isSuperAdmin() || isAuthenticated();
+      allow write: if isSuperAdmin() || (isAuthenticated() && request.resource.data.company_id != null);
     }
     
     match /test/connection {

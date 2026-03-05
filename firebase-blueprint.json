@@ -1,10 +1,24 @@
 {
   "entities": {
+    "Company": {
+      "title": "Company",
+      "description": "A company account in the system",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "slug": { "type": "string", "description": "URL-friendly name for sharing" },
+        "password": { "type": "string" },
+        "logo_url": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "slug", "password"]
+    },
     "ClothingItem": {
       "title": "Clothing Item",
       "description": "An item of clothing in the inventory",
       "type": "object",
       "properties": {
+        "company_id": { "type": "string" },
         "name": { "type": "string" },
         "type": { "type": "string" },
         "model": { "type": "string" },
@@ -16,26 +30,28 @@
         "section": { "type": "string" },
         "created_at": { "type": "string", "format": "date-time" }
       },
-      "required": ["name", "type", "model", "sizes", "color", "age_group", "weather"]
+      "required": ["company_id", "name", "type", "model", "sizes", "color", "age_group", "weather"]
     },
     "Collection": {
       "title": "Collection",
       "description": "A group of clothing items for an event",
       "type": "object",
       "properties": {
+        "company_id": { "type": "string" },
         "name": { "type": "string" },
         "event_date": { "type": "string" },
         "description": { "type": "string" },
         "image_url": { "type": "string" },
         "itemIds": { "type": "array", "items": { "type": "string" } }
       },
-      "required": ["name"]
+      "required": ["company_id", "name"]
     },
     "Client": {
       "title": "Client",
       "description": "A client who rents clothes",
       "type": "object",
       "properties": {
+        "company_id": { "type": "string" },
         "full_name": { "type": "string" },
         "phone": { "type": "string" },
         "id_image_url": { "type": "string" },
@@ -43,13 +59,14 @@
         "company_phone": { "type": "string" },
         "created_at": { "type": "string", "format": "date-time" }
       },
-      "required": ["full_name", "phone"]
+      "required": ["company_id", "full_name", "phone"]
     },
     "Rental": {
       "title": "Rental",
       "description": "A record of a clothing rental",
       "type": "object",
       "properties": {
+        "company_id": { "type": "string" },
         "clothing_id": { "type": "string" },
         "clothing_name": { "type": "string" },
         "image_url": { "type": "string" },
@@ -62,10 +79,14 @@
         "returned_at": { "type": "string", "format": "date-time" },
         "status": { "type": "string", "enum": ["active", "returned"] }
       },
-      "required": ["clothing_id", "client_name", "size", "color", "status"]
+      "required": ["company_id", "clothing_id", "client_name", "size", "color", "status"]
     }
   },
   "firestore": {
+    "/companies/{companyId}": {
+      "schema": "Company",
+      "description": "Company accounts"
+    },
     "/clothes/{clothId}": {
       "schema": "ClothingItem",
       "description": "Inventory of clothes"

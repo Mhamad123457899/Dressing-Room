@@ -17,7 +17,8 @@ import {
   Filter,
   X,
   Check,
-  AlertCircle
+  AlertCircle,
+  Share2
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
@@ -45,8 +46,18 @@ import {
 
 // --- Types ---
 
+interface Company {
+  id: string;
+  name: string;
+  slug: string;
+  password?: string;
+  logo_url?: string;
+  created_at?: any;
+}
+
 interface ClothingItem {
   id: string;
+  company_id: string;
   name: string;
   type: string;
   model: string;
@@ -61,6 +72,7 @@ interface ClothingItem {
 
 interface Collection {
   id: string;
+  company_id: string;
   name: string;
   event_date: string;
   description: string;
@@ -70,6 +82,7 @@ interface Collection {
 
 interface Rental {
   id: string;
+  company_id: string;
   clothing_id: string;
   client_id?: string;
   client_name: string;
@@ -86,6 +99,7 @@ interface Rental {
 
 interface Client {
   id: string;
+  company_id: string;
   full_name: string;
   phone: string;
   id_image_url: string;
@@ -237,6 +251,8 @@ const THEMES = {
     button: "bg-black text-white hover:bg-zinc-800",
     secondary: "bg-zinc-100 text-zinc-700 hover:bg-zinc-200",
     accent: "text-zinc-500",
+    muted: "text-zinc-400",
+    border: "border-zinc-200",
     input: "bg-white border-zinc-200 focus:border-black",
     modal: "bg-white"
   },
@@ -248,6 +264,8 @@ const THEMES = {
     button: "bg-white text-black hover:bg-zinc-200",
     secondary: "bg-zinc-800 text-zinc-300 hover:bg-zinc-700",
     accent: "text-zinc-400",
+    muted: "text-zinc-500",
+    border: "border-zinc-800",
     input: "bg-zinc-900 border-zinc-800 focus:border-white",
     modal: "bg-zinc-900"
   },
@@ -259,18 +277,22 @@ const THEMES = {
     button: "bg-[#b58900] text-white hover:bg-[#a57800]",
     secondary: "bg-[#d3cbb7] text-[#586e75] hover:bg-[#c2bcdd]",
     accent: "text-[#93a1a1]",
+    muted: "text-[#93a1a1]",
+    border: "border-[#d3cbb7]",
     input: "bg-[#eee8d5] border-[#d3cbb7] focus:border-[#b58900]",
     modal: "bg-[#fdf6e3]"
   },
   rose: {
     bg: "bg-[#fff1f2]",
-    text: "text-[#881337]",
+    text: "text-[#9f1239]",
     navbar: "bg-[#ffe4e6]/90 border-[#fecdd3]",
-    card: "bg-white/60 border-[#fecdd3]",
-    button: "bg-[#be123c] text-white hover:bg-[#9f1239]",
-    secondary: "bg-[#ffe4e6] text-[#881337] hover:bg-[#fecdd3]",
+    card: "bg-white border-[#fecdd3]",
+    button: "bg-[#e11d48] text-white hover:bg-[#be123c]",
+    secondary: "bg-[#ffe4e6] text-[#9f1239] hover:bg-[#fecdd3]",
     accent: "text-[#be123c]",
-    input: "bg-white/80 border-[#fecdd3] focus:border-[#be123c]",
+    muted: "text-[#fda4af]",
+    border: "border-[#fecdd3]",
+    input: "bg-white border-[#fecdd3] focus:border-[#e11d48]",
     modal: "bg-[#fff1f2]"
   }
 };
@@ -301,16 +323,25 @@ const ThemeProvider = ({ children }: { children: ReactNode }) => {
 
 import { LanguageSwitcher } from './components/LanguageSwitcher';
 // ... (rest of imports)
-const Navbar = ({ isAdmin, onLogout, onOpenAdmin, t }: { isAdmin: boolean, onLogout: () => void, onOpenAdmin: () => void, t: any }) => {
+const Navbar = ({ isAdmin, onOpenAdmin, t, currentCompany, isViewOnly, onLogout }: { 
+  isAdmin: boolean, 
+  onOpenAdmin: () => void, 
+  t: any, 
+  currentCompany: Company | null, 
+  isViewOnly: boolean,
+  onLogout: () => void
+}) => {
   const { theme, setTheme } = useTheme();
   const [showThemeMenu, setShowThemeMenu] = useState(false);
   const styles = THEMES[theme];
 
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-md border-b px-6 py-4 flex justify-between items-center transition-colors duration-300 ${styles.navbar}`}>
+    <nav className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-md border-b px-6 py-2 flex justify-between items-center transition-colors duration-300 ${styles.navbar}`}>
       <div className="flex items-center gap-4">
-        <Logo size={110} />
-        <h1 className={`text-xl font-bold tracking-tight ${styles.text}`}>Şan Closet Studio</h1>
+        <Logo size={40} src={currentCompany?.logo_url} />
+        <h1 className={`text-xl font-bold tracking-tight ${styles.text}`}>
+          {currentCompany?.name || 'Şan Closet Studio'}
+        </h1>
       </div>
       <div className="flex items-center gap-4">
         <div className="relative">
@@ -334,7 +365,7 @@ const Navbar = ({ isAdmin, onLogout, onOpenAdmin, t }: { isAdmin: boolean, onLog
                     }}
                     className={`px-3 py-2 rounded-lg text-left text-sm font-medium transition-colors capitalize flex items-center justify-between ${theme === tOption ? styles.button : styles.secondary}`}
                   >
-                    {tOption}
+                    {tOption === 'comfort' ? 'Eyes Comfort' : tOption}
                     {theme === tOption && <Check size={14} />}
                   </button>
                 ))}
@@ -343,33 +374,38 @@ const Navbar = ({ isAdmin, onLogout, onOpenAdmin, t }: { isAdmin: boolean, onLog
           )}
         </div>
 
-        <button 
-          onClick={onOpenAdmin}
-          className={`flex items-center gap-2 px-4 py-2 rounded-full transition-colors font-medium whitespace-nowrap ${styles.button}`}
-        >
-          <Settings size={18} />
-          <span className="hidden sm:inline">{t('Admin Panel')}</span>
-        </button>
-        {isAdmin ? (
+        {!isViewOnly && (
+          <button 
+            onClick={onOpenAdmin}
+            className={`flex items-center gap-2 px-4 py-2 rounded-full transition-colors font-medium whitespace-nowrap ${styles.button}`}
+          >
+            <Settings size={18} />
+            <span className="hidden sm:inline">{t('Admin Panel')}</span>
+          </button>
+        )}
+
+        {currentCompany && !isViewOnly && (
           <button 
             onClick={onLogout}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full transition-colors font-medium whitespace-nowrap ${styles.secondary}`}
+            className={`p-2 rounded-full transition-colors ${styles.secondary}`}
+            title="Switch Company"
           >
-            <LogOut size={18} />
-            <span className="hidden sm:inline">{t('Logout')}</span>
+            <LogOut size={20} />
           </button>
-        ) : null}
+        )}
       </div>
     </nav>
   );
 };
 
-const ClothingCard = ({ item, onAddToCollection, onRent, isRented, activeRentals = [] }: { 
+const ClothingCard = ({ item, onAddToCollection, onRent, isRented, activeRentals = [], isViewOnly = false, companySlug }: { 
   item: ClothingItem, 
   onAddToCollection?: (id: string) => void, 
   onRent?: (id: string) => void,
   isRented?: boolean,
   activeRentals?: Rental[],
+  isViewOnly?: boolean,
+  companySlug?: string,
   key?: React.Key 
 }) => {
   const { t } = useTranslation();
@@ -407,10 +443,10 @@ const ClothingCard = ({ item, onAddToCollection, onRent, isRented, activeRentals
           referrerPolicy="no-referrer"
         />
         <div className="absolute top-4 left-4 flex flex-col gap-2">
-          <span className="px-3 py-1 bg-white/90 backdrop-blur-sm rounded-full text-[10px] font-bold uppercase tracking-wider text-zinc-800 shadow-sm">
+          <span className={`px-3 py-1 backdrop-blur-sm rounded-full text-[10px] font-bold uppercase tracking-wider shadow-sm ${theme === 'dark' ? 'bg-white/90 text-zinc-800' : 'bg-black/80 text-white'}`}>
             {item.type}
           </span>
-          <span className="px-3 py-1 bg-black/80 backdrop-blur-sm rounded-full text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">
+          <span className={`px-3 py-1 backdrop-blur-sm rounded-full text-[10px] font-bold uppercase tracking-wider shadow-sm ${theme === 'dark' ? 'bg-black/80 text-white' : 'bg-white/90 text-zinc-800'}`}>
             {item.model}
           </span>
           <span className="px-3 py-1 bg-blue-500 backdrop-blur-sm rounded-full text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">
@@ -422,6 +458,20 @@ const ClothingCard = ({ item, onAddToCollection, onRent, isRented, activeRentals
             </span>
           )}
         </div>
+        
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            const slug = companySlug || item.company_id;
+            const shareUrl = `${window.location.origin}${window.location.pathname}?view=${slug}&search=${encodeURIComponent(item.name)}`;
+            navigator.clipboard.writeText(shareUrl);
+            alert('Item link copied to clipboard!');
+          }}
+          className={`absolute top-4 right-4 p-2 backdrop-blur-md rounded-full shadow-lg transition-all hover:scale-110 ${theme === 'dark' ? 'bg-white/20 text-white hover:bg-white/40' : 'bg-black/20 text-white hover:bg-black/40'}`}
+          title="Share Item"
+        >
+          <Share2 size={16} />
+        </button>
       </div>
       
       <div className="p-5">
@@ -464,38 +514,40 @@ const ClothingCard = ({ item, onAddToCollection, onRent, isRented, activeRentals
             <span className={`text-xs font-medium capitalize ${styles.accent}`}>{t(item.color)}</span>
           </div>
 
-          <div className="flex flex-col gap-2">
-            {onRent && (
-              <button 
-                onClick={() => onRent(item.id)}
-                disabled={isCurrentlyRented}
-                className={`w-full py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${styles.button}`}
-              >
-                <Tag size={16} />
-                {isCurrentlyRented ? t('Rented') : t('Rent Now')}
-              </button>
-            )}
-            {onAddToCollection && (
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  onAddToCollection(item.id);
-                }}
-                className={`w-full py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${styles.secondary}`}
-              >
-                <Plus size={16} />
-                Add to Collection
-              </button>
-            )}
-          </div>
+          {!isViewOnly && (
+            <div className="flex flex-col gap-2">
+              {onRent && (
+                <button 
+                  onClick={() => onRent(item.id)}
+                  disabled={isCurrentlyRented}
+                  className={`w-full py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${styles.button}`}
+                >
+                  <Tag size={16} />
+                  {isCurrentlyRented ? t('Rented') : t('Rent Now')}
+                </button>
+              )}
+              {onAddToCollection && (
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    onAddToCollection(item.id);
+                  }}
+                  className={`w-full py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${styles.secondary}`}
+                >
+                  <Plus size={16} />
+                  {t('Add to Collection')}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </motion.div>
   );
 };
 
-const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn, onDeleteRental, setNotification, setConfirmModal, setAddToCollectionModal, seedSampleData, isSubmitting }: { 
+const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn, onDeleteRental, setNotification, setConfirmModal, setAddToCollectionModal, seedSampleData, isSubmitting, currentCompany, isViewOnly }: { 
   onClose: () => void, 
   rentals: Rental[], 
   clothes: ClothingItem[], 
@@ -507,7 +559,9 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
   setConfirmModal: (c: {show: boolean, title: string, message: string, onConfirm: () => void} | null) => void,
   setAddToCollectionModal: (m: {show: boolean, clothingId: string | null}) => void,
   seedSampleData: () => Promise<void>,
-  isSubmitting: boolean
+  isSubmitting: boolean,
+  currentCompany: Company | null,
+  isViewOnly: boolean
 }) => {
   const { theme } = useTheme();
   const styles = THEMES[theme];
@@ -585,6 +639,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
       } else {
         await addDoc(collection(db, "clothes"), {
           ...newCloth,
+          company_id: currentCompany!.id,
           created_at: Timestamp.now()
         });
       }
@@ -632,6 +687,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
       } else {
         await addDoc(collection(db, "collections"), {
           ...newCollection,
+          company_id: currentCompany!.id,
           itemIds: []
         });
       }
@@ -664,6 +720,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
       } else {
         await addDoc(collection(db, "clients"), {
           ...newClient,
+          company_id: currentCompany!.id,
           created_at: Timestamp.now()
         });
       }
@@ -793,7 +850,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
           </button>
         </div>
 
-        <div className={`flex flex-wrap gap-4 mb-12 border-b pb-4 ${theme === 'dark' ? 'border-zinc-800' : 'border-zinc-100'}`}>
+        <div className={`flex flex-wrap gap-4 mb-12 border-b pb-4 ${styles.border}`}>
           <button 
             onClick={() => { setActiveTab("clothes"); setInventorySearch(""); }}
             className={`px-6 py-2 rounded-full font-bold transition-all ${
@@ -846,7 +903,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                 </div>
                 <form onSubmit={handleAddCloth} className="space-y-6">
                   <div>
-                    <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Item Name</label>
+                    <label className={`block text-[10px] font-bold uppercase tracking-widest mb-2 ${styles.muted}`}>Item Name</label>
                     <input 
                       type="text" 
                       required
@@ -859,7 +916,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Type</label>
+                      <label className={`block text-[10px] font-bold uppercase tracking-widest mb-2 ${styles.muted}`}>Type</label>
                       <select 
                         value={newCloth.type}
                         onChange={e => setNewCloth({...newCloth, type: e.target.value})}
@@ -869,7 +926,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                       </select>
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Model</label>
+                      <label className={`block text-[10px] font-bold uppercase tracking-widest mb-2 ${styles.muted}`}>Model</label>
                       <select 
                         value={newCloth.model}
                         onChange={e => setNewCloth({...newCloth, model: e.target.value})}
@@ -881,7 +938,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Sizes (Press Enter)</label>
+                    <label className={`block text-[10px] font-bold uppercase tracking-widest mb-2 ${styles.muted}`}>Sizes (Press Enter)</label>
                     <div className="flex gap-2 mb-2">
                       <input 
                         type="text" 
@@ -922,7 +979,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Age Group</label>
+                      <label className={`block text-[10px] font-bold uppercase tracking-widest mb-2 ${styles.muted}`}>Age Group</label>
                       <select 
                         value={newCloth.age_group}
                         onChange={e => setNewCloth({...newCloth, age_group: e.target.value})}
@@ -932,7 +989,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                       </select>
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Weather</label>
+                      <label className={`block text-[10px] font-bold uppercase tracking-widest mb-2 ${styles.muted}`}>Weather</label>
                       <select 
                         value={newCloth.weather}
                         onChange={e => setNewCloth({...newCloth, weather: e.target.value})}
@@ -942,7 +999,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                       </select>
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Store Section</label>
+                      <label className={`block text-[10px] font-bold uppercase tracking-widest mb-2 ${styles.muted}`}>Store Section</label>
                       <select 
                         value={newCloth.section}
                         onChange={e => setNewCloth({...newCloth, section: e.target.value})}
@@ -954,7 +1011,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                   </div>
 
                   <div className="relative">
-                    <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Image URL</label>
+                    <label className={`block text-[10px] font-bold uppercase tracking-widest mb-2 ${styles.muted}`}>Image URL</label>
                     <div className="relative">
                       <input 
                         type="text" 
@@ -1033,6 +1090,8 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                   <div key={item.id} className="relative">
                     <ClothingCard 
                       item={item} 
+                      isViewOnly={isViewOnly}
+                      companySlug={currentCompany?.slug}
                       onAddToCollection={(id) => setAddToCollectionModal({show: true, clothingId: id})}
                       activeRentals={rentals.filter(r => r.clothing_id === item.id && r.status === 'active')}
                     />
@@ -1066,7 +1125,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                 </h3>
                 <form onSubmit={handleAddCollection} className="space-y-6">
                   <div>
-                    <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Collection Name</label>
+                    <label className={`block text-[10px] font-bold uppercase tracking-widest mb-2 ${styles.muted}`}>Collection Name</label>
                     <input 
                       type="text" 
                       required
@@ -1077,7 +1136,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Event Date</label>
+                    <label className={`block text-[10px] font-bold uppercase tracking-widest mb-2 ${styles.muted}`}>Event Date</label>
                     <input 
                       type="date" 
                       value={newCollection.event_date}
@@ -1086,7 +1145,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Collection Image URL</label>
+                    <label className={`block text-[10px] font-bold uppercase tracking-widest mb-2 ${styles.muted}`}>Collection Image URL</label>
                     <input 
                       type="url" 
                       value={newCollection.image_url}
@@ -1096,7 +1155,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Description</label>
+                    <label className={`block text-[10px] font-bold uppercase tracking-widest mb-2 ${styles.muted}`}>Description</label>
                     <textarea 
                       value={newCollection.description}
                       onChange={e => setNewCollection({...newCollection, description: e.target.value})}
@@ -1153,8 +1212,8 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                         <img src={col.image_url} alt={col.name} className="w-16 h-16 rounded-xl object-cover" referrerPolicy="no-referrer" />
                       )}
                       <div>
-                        <h4 className="text-lg font-bold text-zinc-900">{col.name}</h4>
-                        <div className="flex items-center gap-4 mt-1 text-zinc-500 text-sm">
+                        <h4 className={`text-lg font-bold ${styles.text}`}>{col.name}</h4>
+                        <div className={`flex items-center gap-4 mt-1 text-sm ${styles.accent}`}>
                           <span className="flex items-center gap-1"><Calendar size={14} /> {col.event_date || "No date"}</span>
                           <span>{col.description}</span>
                         </div>
@@ -1190,7 +1249,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                 </h3>
                 <form onSubmit={handleAddClient} className="space-y-6">
                   <div>
-                    <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Full Name</label>
+                    <label className={`block text-[10px] font-bold uppercase tracking-widest mb-2 ${styles.muted}`}>Full Name</label>
                     <input 
                       type="text" 
                       required
@@ -1201,7 +1260,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Phone Number</label>
+                    <label className={`block text-[10px] font-bold uppercase tracking-widest mb-2 ${styles.muted}`}>Phone Number</label>
                     <input 
                       type="tel" 
                       required
@@ -1212,7 +1271,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">ID / Proof Image URL</label>
+                    <label className={`block text-[10px] font-bold uppercase tracking-widest mb-2 ${styles.muted}`}>ID / Proof Image URL</label>
                     <input 
                       type="url" 
                       value={newClient.id_image_url}
@@ -1223,7 +1282,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Company Name</label>
+                      <label className={`block text-[10px] font-bold uppercase tracking-widest mb-2 ${styles.muted}`}>Company Name</label>
                       <input 
                         type="text" 
                         value={newClient.company_name}
@@ -1233,7 +1292,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Company Phone</label>
+                      <label className={`block text-[10px] font-bold uppercase tracking-widest mb-2 ${styles.muted}`}>Company Phone</label>
                       <input 
                         type="tel" 
                         value={newClient.company_phone}
@@ -1300,15 +1359,15 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                         )}
                       </div>
                       <div>
-                        <h4 className="font-bold text-zinc-900">{client.full_name}</h4>
-                        <p className="text-zinc-500 text-sm">{client.phone}</p>
+                        <h4 className={`font-bold ${styles.text}`}>{client.full_name}</h4>
+                        <p className={`text-sm ${styles.accent}`}>{client.phone}</p>
                       </div>
                     </div>
                     {client.company_name && (
-                      <div className="bg-zinc-50 p-3 rounded-xl mb-4">
-                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Company</p>
-                        <p className="text-sm font-medium">{client.company_name}</p>
-                        {client.company_phone && <p className="text-xs text-zinc-500">{client.company_phone}</p>}
+                      <div className={`p-3 rounded-xl mb-4 ${theme === 'dark' ? 'bg-zinc-800' : 'bg-zinc-50'}`}>
+                        <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${styles.muted}`}>Company</p>
+                        <p className={`text-sm font-medium ${styles.text}`}>{client.company_name}</p>
+                        {client.company_phone && <p className={`text-xs ${styles.accent}`}>{client.company_phone}</p>}
                       </div>
                     )}
                     <div className="flex gap-2 flex-wrap">
@@ -1345,11 +1404,11 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
             {editingRental && (
               <div className={`p-8 rounded-3xl border mb-8 ${styles.card}`}>
                 <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-                  <Settings className="text-zinc-900" /> Edit Rental Record
+                  <Settings className={styles.text} /> Edit Rental Record
                 </h3>
                 <form onSubmit={handleUpdateRental} className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
                   <div>
-                    <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Client</label>
+                    <label className={`block text-[10px] font-bold uppercase tracking-widest mb-2 ${styles.muted}`}>Client</label>
                     <select 
                       value={editRentalForm.client_id || ""}
                       onChange={e => setEditRentalForm({...editRentalForm, client_id: e.target.value})}
@@ -1360,7 +1419,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Size</label>
+                    <label className={`block text-[10px] font-bold uppercase tracking-widest mb-2 ${styles.muted}`}>Size</label>
                     <input 
                       type="text"
                       value={editRentalForm.size}
@@ -1378,7 +1437,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Status</label>
+                    <label className={`block text-[10px] font-bold uppercase tracking-widest mb-2 ${styles.muted}`}>Status</label>
                     <select 
                       value={editRentalForm.status}
                       onChange={e => setEditRentalForm({...editRentalForm, status: e.target.value})}
@@ -1461,28 +1520,28 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                           <span className={`px-2 py-0.5 text-[10px] font-black uppercase tracking-widest rounded-md ${styles.secondary}`}>Returned</span>
                         )}
                       </div>
-                      <p className="text-zinc-500 text-sm">{rental.client_phone_number || rental.client_phone}</p>
+                      <p className={`text-sm ${styles.accent}`}>{rental.client_phone_number || rental.client_phone}</p>
                     </div>
                   </div>
                   
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-8 flex-1 px-0 md:px-8">
                     <div>
-                      <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Item</p>
+                      <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${styles.muted}`}>Item</p>
                       <p className="text-sm font-medium">{rental.clothing_name}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Size</p>
+                      <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${styles.muted}`}>Size</p>
                       <p className="text-sm font-medium">{rental.size}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Color</p>
+                      <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${styles.muted}`}>Color</p>
                       <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full border border-zinc-200" style={{backgroundColor: (rental.color || "").toLowerCase()}} />
+        <div className={`w-3 h-3 rounded-full border ${styles.border}`} style={{backgroundColor: (rental.color || "").toLowerCase()}} />
                         <p className="text-sm font-medium">{rental.color}</p>
                       </div>
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Date</p>
+                      <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${styles.muted}`}>Date</p>
                       <p className="text-sm font-medium">{new Date(rental.rental_date).toLocaleDateString()}</p>
                     </div>
                   </div>
@@ -1573,14 +1632,14 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                     return diffMonths < rentalMonthFilter;
                   })
                   .map(rental => (
-                    <div key={rental.id} className="flex items-center gap-4 p-4 border border-zinc-200 rounded-2xl">
+                    <div key={rental.id} className={`flex items-center gap-4 p-4 border rounded-2xl ${styles.border}`}>
                       <img src={rental.image_url} alt={rental.clothing_name} className="w-16 h-16 rounded-lg object-cover" referrerPolicy="no-referrer" />
                       <div className="flex-1">
                         <h4 className="font-bold">{rental.clothing_name}</h4>
                         <p className="text-sm text-zinc-500">Size: {rental.size} | Color: {rental.color}</p>
-                        <p className="text-xs text-zinc-400">Rented: {new Date(rental.rental_date).toLocaleDateString()}</p>
+                        <p className={`text-xs ${styles.muted}`}>Rented: {new Date(rental.rental_date).toLocaleDateString()}</p>
                       </div>
-                      <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${rental.status === 'active' ? 'bg-emerald-100 text-emerald-600' : 'bg-zinc-100 text-zinc-400'}`}>
+                      <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${rental.status === 'active' ? 'bg-emerald-100 text-emerald-600' : styles.secondary}`}>
                         {rental.status}
                       </div>
                     </div>
@@ -1613,15 +1672,19 @@ export default function AppWrapper() {
   );
 }
 
-const Logo = ({ size = 80, withBackground = false }: { size?: number, withBackground?: boolean }) => {
+const Logo = ({ size = 80, withBackground = false, src }: { size?: number, withBackground?: boolean, src?: string }) => {
+  const { theme } = useTheme();
+  const styles = THEMES[theme];
+  const logoSrc = src || "https://i.ibb.co/Wp2BQvjv/Elegant-gold-monogram-with-rose-emblem.png";
+
   if (withBackground) {
     return (
       <div 
-        className="bg-rose-950/30 backdrop-blur-md rounded-[2.5rem] flex items-center justify-center shadow-2xl border border-white/10"
+        className={`backdrop-blur-md rounded-[2.5rem] flex items-center justify-center shadow-2xl border ${styles.secondary} ${styles.border}`}
         style={{ width: size, height: size, padding: size * 0.1 }}
       >
         <img 
-          src="https://i.ibb.co/Wp2BQvjv/Elegant-gold-monogram-with-rose-emblem.png" 
+          src={logoSrc} 
           alt="Şan Closet Studio Logo" 
           className="w-full h-full object-contain"
           referrerPolicy="no-referrer"
@@ -1632,13 +1695,137 @@ const Logo = ({ size = 80, withBackground = false }: { size?: number, withBackgr
   
   return (
     <img 
-      src="https://i.ibb.co/Wp2BQvjv/Elegant-gold-monogram-with-rose-emblem.png" 
+      src={logoSrc} 
       alt="Şan Closet Studio Logo" 
       width={size} 
       height={size} 
       className="object-contain"
       referrerPolicy="no-referrer"
     />
+  );
+};
+
+const CompanyPortal = ({ onLogin }: { onLogin: (company: Company) => void }) => {
+  const { t } = useTranslation();
+  const { theme } = useTheme();
+  const styles = THEMES[theme];
+  const [mode, setMode] = useState<'login' | 'setup'>('login');
+  const [name, setName] = useState('');
+  const [password, setPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setError('');
+    
+    try {
+      if (mode === 'login') {
+        const q = query(collection(db, "companies"), where("name", "==", name));
+        const snapshot = await getDocs(q);
+        if (snapshot.empty) {
+          setError('Company not found.');
+        } else {
+          const company = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as Company;
+          if (company.password === password) {
+            onLogin(company);
+          } else {
+            setError('Incorrect password.');
+          }
+        }
+      } else {
+        // Setup new company
+        const slug = name.toLowerCase().replace(/[^a-z0-9]/g, '-');
+        const q = query(collection(db, "companies"), where("slug", "==", slug));
+        const snapshot = await getDocs(q);
+        if (!snapshot.empty) {
+          setError('Company name already taken.');
+        } else {
+          const newCompany = {
+            name,
+            slug,
+            password,
+            created_at: Timestamp.now()
+          };
+          const docRef = await addDoc(collection(db, "companies"), newCompany);
+          onLogin({ id: docRef.id, ...newCompany });
+        }
+      }
+    } catch (err) {
+      setError('An error occurred. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className={`fixed inset-0 z-[200] flex items-center justify-center p-6 ${styles.bg}`}>
+      <motion.div 
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className={`w-full max-w-md p-10 rounded-[3rem] shadow-2xl border ${styles.modal} ${styles.border}`}
+      >
+        <div className="text-center mb-10">
+          <Logo size={100} withBackground />
+          <h2 className={`text-3xl font-black tracking-tighter mt-6 ${styles.text}`}>
+            {mode === 'login' ? 'Company Login' : 'Setup Your Closet'}
+          </h2>
+          <p className={`mt-2 ${styles.accent}`}>
+            {mode === 'login' ? 'Access your private wardrobe management.' : 'Create a new account for your company.'}
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label className={`block text-[10px] font-bold uppercase tracking-widest mb-2 ${styles.muted}`}>Company Name</label>
+            <input 
+              type="text"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className={`w-full py-4 px-6 rounded-2xl font-bold focus:outline-none focus:ring-2 transition-all border ${styles.input} ${theme === 'dark' ? 'focus:ring-white' : 'focus:ring-black'}`}
+              placeholder="e.g. Şan Studio"
+            />
+          </div>
+          <div>
+            <label className={`block text-[10px] font-bold uppercase tracking-widest mb-2 ${styles.muted}`}>Password</label>
+            <input 
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className={`w-full py-4 px-6 rounded-2xl font-bold focus:outline-none focus:ring-2 transition-all border ${styles.input} ${theme === 'dark' ? 'focus:ring-white' : 'focus:ring-black'}`}
+              placeholder="••••••••"
+            />
+          </div>
+
+          {error && (
+            <div className="flex items-center gap-2 text-rose-500 text-sm font-bold bg-rose-500/10 p-4 rounded-2xl">
+              <AlertCircle size={16} />
+              {error}
+            </div>
+          )}
+
+          <button 
+            type="submit"
+            disabled={isSubmitting}
+            className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest transition-all shadow-lg flex items-center justify-center gap-3 ${styles.button} ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            {isSubmitting ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : (mode === 'login' ? 'Enter Closet' : 'Create Account')}
+          </button>
+        </form>
+
+        <div className="mt-8 text-center">
+          <button 
+            onClick={() => setMode(mode === 'login' ? 'setup' : 'login')}
+            className={`text-sm font-bold ${styles.accent} hover:underline`}
+          >
+            {mode === 'login' ? "Don't have an account? Setup now" : "Already have an account? Login"}
+          </button>
+        </div>
+      </motion.div>
+    </div>
   );
 };
 
@@ -1708,34 +1895,105 @@ function App() {
     return () => unsubAuth();
   }, []);
 
-  useEffect(() => {
-    const unsubClothes = onSnapshot(query(collection(db, "clothes"), orderBy("created_at", "desc")), (snapshot) => {
-      setClothes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ClothingItem)));
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, "clothes");
-    });
+  const [currentCompany, setCurrentCompany] = useState<Company | null>(null);
+  const [isViewOnly, setIsViewOnly] = useState(false);
+  const [isCompanyLoading, setIsCompanyLoading] = useState(true);
 
-    const unsubCollections = onSnapshot(collection(db, "collections"), (snapshot) => {
-      setCollections(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Collection)));
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, "collections");
-    });
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const companySlug = params.get('company') || params.get('view');
+    
+    const checkCompany = async () => {
+      if (companySlug) {
+        const q = query(collection(db, "companies"), where("slug", "==", companySlug));
+        const snapshot = await getDocs(q);
+        if (!snapshot.empty) {
+          const companyData = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as Company;
+          setCurrentCompany(companyData);
+          setIsViewOnly(true);
+          
+          const searchParam = params.get('search');
+          if (searchParam) {
+            setSearchQuery(searchParam);
+          }
+        }
+      } else {
+        const savedCompanyId = localStorage.getItem('companyId');
+        if (savedCompanyId) {
+          const q = query(collection(db, "companies"), where("__name__", "==", savedCompanyId));
+          const snapshot = await getDocs(q);
+          if (!snapshot.empty) {
+            setCurrentCompany({ id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as Company);
+          }
+        }
+      }
+      setIsCompanyLoading(false);
+    };
+
+    checkCompany();
+  }, []);
+
+  useEffect(() => {
+    if (!currentCompany) return;
+
+    const unsubClothes = onSnapshot(
+      query(
+        collection(db, "clothes"), 
+        where("company_id", "==", currentCompany.id),
+        orderBy("created_at", "desc")
+      ), 
+      (snapshot) => {
+        setClothes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ClothingItem)));
+      }, 
+      (error) => {
+        handleFirestoreError(error, OperationType.GET, "clothes");
+      }
+    );
+
+    const unsubCollections = onSnapshot(
+      query(
+        collection(db, "collections"),
+        where("company_id", "==", currentCompany.id)
+      ), 
+      (snapshot) => {
+        setCollections(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Collection)));
+      }, 
+      (error) => {
+        handleFirestoreError(error, OperationType.GET, "collections");
+      }
+    );
 
     let unsubRentals = () => {};
     let unsubClients = () => {};
 
-    if (isAdmin) {
-      unsubRentals = onSnapshot(query(collection(db, "rentals"), orderBy("rental_date", "desc")), (snapshot) => {
-        setRentals(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Rental)));
-      }, (error) => {
-        handleFirestoreError(error, OperationType.GET, "rentals");
-      });
+    if (isAdmin && !isViewOnly) {
+      unsubRentals = onSnapshot(
+        query(
+          collection(db, "rentals"), 
+          where("company_id", "==", currentCompany.id),
+          orderBy("rental_date", "desc")
+        ), 
+        (snapshot) => {
+          setRentals(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Rental)));
+        }, 
+        (error) => {
+          handleFirestoreError(error, OperationType.GET, "rentals");
+        }
+      );
 
-      unsubClients = onSnapshot(query(collection(db, "clients"), orderBy("full_name", "asc")), (snapshot) => {
-        setClients(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client)));
-      }, (error) => {
-        handleFirestoreError(error, OperationType.GET, "clients");
-      });
+      unsubClients = onSnapshot(
+        query(
+          collection(db, "clients"), 
+          where("company_id", "==", currentCompany.id),
+          orderBy("full_name", "asc")
+        ), 
+        (snapshot) => {
+          setClients(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client)));
+        }, 
+        (error) => {
+          handleFirestoreError(error, OperationType.GET, "clients");
+        }
+      );
     } else {
       setRentals([]);
       setClients([]);
@@ -1747,7 +2005,7 @@ function App() {
       unsubRentals();
       unsubClients();
     };
-  }, [isAdmin]);
+  }, [currentCompany, isAdmin, isViewOnly]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
@@ -1807,7 +2065,7 @@ function App() {
       ];
 
       for (const item of samples) {
-        await addDoc(collection(db, "clothes"), item);
+        await addDoc(collection(db, "clothes"), { ...item, company_id: currentCompany!.id });
       }
       setNotification({ message: "Sample data added successfully!", type: "success" });
     } catch (error) {
@@ -1899,6 +2157,7 @@ function App() {
         client_phone: client?.phone || "",
         size: rentalForm.size,
         color: rentalForm.color,
+        company_id: currentCompany!.id,
         rental_date: Timestamp.now(),
         status: "active",
         image_url: clothes.find(c => c.id === rentalModal.clothingId)?.image_url || ""
@@ -1967,6 +2226,7 @@ function App() {
       });
       if (response.ok) {
         setIsAdmin(true);
+        setShowAdminPanel(true);
         localStorage.setItem('adminLoginTime', Date.now().toString());
         setNotification({ message: t("Login successful!"), type: "success" });
         setShowLogin(false);
@@ -1992,6 +2252,12 @@ function App() {
     }
   };
 
+  const handleCompanyLogout = () => {
+    localStorage.removeItem('companyId');
+    setCurrentCompany(null);
+    setIsAdmin(false);
+  };
+
   const filteredClothes = clothes.filter(item => {
     const activeRentals = rentals.filter(r => r.clothing_id === item.id && r.status === 'active');
     const totalCombinations = item.sizes.length;
@@ -2014,39 +2280,47 @@ function App() {
     return matchesSearch && matchesFilter;
   });
 
+  if (isCompanyLoading) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center ${styles.bg}`}>
+        <div className="w-12 h-12 border-4 border-black/10 border-t-black rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!currentCompany) {
+    return <CompanyPortal onLogin={(company) => {
+      setCurrentCompany(company);
+      localStorage.setItem('companyId', company.id);
+    }} />;
+  }
+
   return (
     <div dir="auto" className={`min-h-screen font-sans selection:bg-black selection:text-white transition-colors duration-300 ${styles.bg} ${styles.text}`}>
       <Navbar 
         isAdmin={isAdmin} 
-        onLogout={handleLogout}
+        currentCompany={currentCompany}
+        isViewOnly={isViewOnly}
+        onLogout={handleCompanyLogout}
         onOpenAdmin={() => {
-          if (isAdmin) {
-            setShowAdminPanel(true);
-            return;
-          }
-          const lastLogin = localStorage.getItem('adminLoginTime');
-          if (lastLogin && Date.now() - parseInt(lastLogin) < 5 * 60 * 1000) {
-            setIsAdmin(true);
-            setShowAdminPanel(true);
-          } else {
-            setShowLogin(true);
-          }
+          setIsAdmin(false);
+          setShowLogin(true);
         }}
         t={t}
       />
 
-      <main className="pt-32 pb-24 px-6 max-w-7xl mx-auto">
+      <main className="pt-24 pb-24 px-6 max-w-7xl mx-auto">
         {/* Hero Section */}
         <section className="mb-20 text-center">
           <div className="flex justify-center mb-6">
-            <Logo size={280} withBackground />
+            <Logo size={280} withBackground src={currentCompany.logo_url} />
           </div>
           <motion.h2 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-4xl md:text-6xl font-black tracking-tighter mb-6"
           >
-            {t('DRESS TO IMPRESS').split(' ').slice(0, 2).join(' ')} <span className={styles.accent}>{t('DRESS TO IMPRESS').split(' ').slice(2).join(' ')}</span>
+            {currentCompany.name.split(' ').slice(0, 2).join(' ')} <span className={styles.accent}>{currentCompany.name.split(' ').slice(2).join(' ') || t('Closet')}</span>
           </motion.h2>
           <motion.p 
             initial={{ opacity: 0, y: 20 }}
@@ -2054,8 +2328,24 @@ function App() {
             transition={{ delay: 0.1 }}
             className={`text-xl max-w-2xl mx-auto ${styles.accent}`}
           >
-            Şan Closet Studio: {t('Your ultimate wardrobe management system. Organize your clothes, create collections for events, and always look your best.')}
+            {currentCompany.name}: {t('Your ultimate wardrobe management system. Organize your clothes, create collections for events, and always look your best.')}
           </motion.p>
+          
+          {isAdmin && !isViewOnly && (
+            <div className="mt-8 flex justify-center">
+              <button 
+                onClick={() => {
+                  const shareUrl = `${window.location.origin}${window.location.pathname}?view=${currentCompany.slug}`;
+                  navigator.clipboard.writeText(shareUrl);
+                  setNotification({ message: "Share link copied to clipboard!", type: "success" });
+                }}
+                className={`flex items-center gap-2 px-6 py-3 rounded-full font-bold transition-all ${styles.secondary}`}
+              >
+                <Plus size={18} />
+                Share View-Only Link
+              </button>
+            </div>
+          )}
         </section>
 
         {/* Collections Horizontal Scroll */}
@@ -2063,16 +2353,16 @@ function App() {
           <div className="flex justify-between items-end mb-8">
             <div>
               <h3 className="text-2xl font-bold tracking-tight">TVC Wardrobe History</h3>
-              <p className="text-zinc-500">Clothing sets used in completed TV commercial projects.</p>
+              <p className={styles.accent}>Clothing sets used in completed TV commercial projects.</p>
             </div>
-            <button className="text-sm font-bold uppercase tracking-widest text-zinc-400 hover:text-black transition-colors">
+            <button className={`text-sm font-bold uppercase tracking-widest transition-colors ${styles.muted} hover:opacity-80`}>
               View All
             </button>
           </div>
           
           <div className="flex gap-6 overflow-x-auto pb-8 snap-x no-scrollbar">
             {collections.length === 0 ? (
-              <div className="w-full py-12 border-2 border-dashed border-zinc-200 rounded-3xl flex flex-center justify-center text-zinc-400 font-medium">
+              <div className={`w-full py-12 border-2 border-dashed rounded-3xl flex flex-center justify-center font-medium ${styles.border} ${styles.muted}`}>
                 No collections created yet.
               </div>
             ) : (
@@ -2083,13 +2373,27 @@ function App() {
                   onClick={() => handleCollectionClick(col)}
                   className={`min-w-[300px] md:min-w-[400px] p-8 rounded-[2rem] border snap-start cursor-pointer hover:shadow-xl transition-all ${styles.card}`}
                 >
-                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-6 ${styles.secondary}`}>
-                    <Calendar className="text-zinc-900" size={24} />
+                  <div className="flex justify-between items-start mb-6">
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${styles.secondary}`}>
+                      <Calendar className="text-zinc-900" size={24} />
+                    </div>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const shareUrl = `${window.location.origin}${window.location.pathname}?view=${currentCompany?.slug}&search=${encodeURIComponent(col.name)}`;
+                        navigator.clipboard.writeText(shareUrl);
+                        setNotification({ message: "Collection link copied!", type: "success" });
+                      }}
+                      className={`p-2 rounded-full transition-all ${styles.secondary} hover:scale-110`}
+                      title="Share Collection"
+                    >
+                      <Share2 size={18} />
+                    </button>
                   </div>
                   <h4 className="text-2xl font-bold mb-2">{col.name}</h4>
-                  <p className="text-zinc-500 mb-6 line-clamp-2">{col.description}</p>
+                  <p className={`mb-6 line-clamp-2 ${styles.accent}`}>{col.description}</p>
                   <div className="flex justify-between items-center">
-                    <span className="text-xs font-black uppercase tracking-widest text-zinc-400">
+                    <span className={`text-xs font-black uppercase tracking-widest ${styles.muted}`}>
                       {col.event_date || "Upcoming"}
                     </span>
                     <div className="flex -space-x-3">
@@ -2112,12 +2416,12 @@ function App() {
             <div className="flex justify-between items-end mb-8">
               <div>
                 <h3 className="text-2xl font-bold tracking-tight">My Active Rentals</h3>
-                <p className="text-zinc-500">Items you currently have rented.</p>
+                <p className={styles.accent}>Items you currently have rented.</p>
               </div>
               {rentals.filter(r => r.status === 'active').length > 3 && (
                 <button 
                   onClick={() => setShowAllRentals(!showAllRentals)}
-                  className="text-sm font-bold uppercase tracking-widest text-zinc-400 hover:text-black transition-colors"
+                  className={`text-sm font-bold uppercase tracking-widest transition-colors ${styles.muted} hover:opacity-80`}
                 >
                   {showAllRentals ? 'Show Less' : 'See More'}
                 </button>
@@ -2154,12 +2458,12 @@ function App() {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
             <div>
               <h3 className="text-2xl font-bold tracking-tight">Wardrobe Inventory</h3>
-              <p className="text-zinc-500">Browse and filter your entire clothing collection.</p>
+              <p className={styles.accent}>Browse and filter your entire clothing collection.</p>
             </div>
             
             <div className="flex flex-wrap gap-4 w-full md:w-auto">
               <div className="relative flex-1 md:w-64">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
+                <Search className={`absolute left-4 top-1/2 -translate-y-1/2 ${styles.muted}`} size={18} />
                 <input 
                   type="text" 
                   placeholder="Search by name, type, size, or color..."
@@ -2169,7 +2473,7 @@ function App() {
                 />
               </div>
               <div className={`flex items-center gap-2 px-4 py-3 rounded-2xl border ${styles.input}`}>
-                <Filter size={18} className="text-zinc-400" />
+                <Filter size={18} className={styles.muted} />
                 <select 
                   value={filterType}
                   onChange={e => setFilterType(e.target.value)}
@@ -2180,7 +2484,7 @@ function App() {
                 </select>
               </div>
               <div className={`flex items-center gap-2 px-4 py-3 rounded-2xl border ${styles.input}`}>
-                <Check size={18} className="text-zinc-400" />
+                <Check size={18} className={styles.muted} />
                 <select 
                   value={availabilityFilter}
                   onChange={e => setAvailabilityFilter(e.target.value as any)}
@@ -2197,7 +2501,7 @@ function App() {
           {filteredClothes.length === 0 ? (
             <div className={`text-center py-24 rounded-[3rem] border ${styles.card}`}>
               <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 ${styles.secondary}`}>
-                <Search size={32} className="text-zinc-300" />
+                <Search size={32} className={styles.muted} />
               </div>
               <h4 className={`text-xl font-bold ${styles.text}`}>No items found</h4>
               <p className={`mt-2 ${styles.accent}`}>Try adjusting your search or filters.</p>
@@ -2209,6 +2513,8 @@ function App() {
                   <ClothingCard 
                     key={item.id} 
                     item={item} 
+                    isViewOnly={isViewOnly}
+                    companySlug={currentCompany?.slug}
                     onRent={() => handleRentClick(item)}
                     activeRentals={rentals.filter(r => r.clothing_id === item.id && r.status === 'active')}
                   />
@@ -2237,7 +2543,7 @@ function App() {
               <div className="flex justify-between items-start mb-8">
                 <div>
                   <h2 className="text-3xl font-black tracking-tighter">Rent Item</h2>
-                  <p className="text-zinc-500 mt-2">Renting: <span className="font-bold text-black">{rentalModal.clothingName}</span></p>
+                  <p className={`mt-2 ${styles.accent}`}>Renting: <span className={`font-bold ${styles.text}`}>{rentalModal.clothingName}</span></p>
                 </div>
                 <button onClick={() => setRentalModal({ ...rentalModal, show: false })} className={`p-2 rounded-full transition-all ${styles.secondary}`}>
                   <X size={20} />
@@ -2246,10 +2552,10 @@ function App() {
 
               <form onSubmit={handleRentSubmit} className="space-y-6">
                 <div className={`p-6 rounded-3xl border ${styles.card}`}>
-                  <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-4">Select Client Account</label>
+                  <label className={`block text-[10px] font-bold uppercase tracking-widest mb-4 ${styles.muted}`}>Select Client Account</label>
                   
                   <div className="relative mb-4">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
+                    <Search className={`absolute left-3 top-1/2 -translate-y-1/2 ${styles.muted}`} size={16} />
                     <input 
                       type="text" 
                       placeholder="Search saved clients..."
@@ -2278,13 +2584,13 @@ function App() {
                         </div>
                         <div>
                           <p className="font-bold text-sm">{client.full_name}</p>
-                          <p className={`text-xs ${rentalForm.client_id === client.id ? "text-white/60" : "text-zinc-500"}`}>{client.phone}</p>
+                          <p className={`text-xs ${rentalForm.client_id === client.id ? "text-white/60" : styles.accent}`}>{client.phone}</p>
                         </div>
                         {rentalForm.client_id === client.id && <Check size={16} className="ml-auto" />}
                       </button>
                     ))}
                     {clients.length === 0 && (
-                      <div className="text-center py-4 text-zinc-400 text-sm">
+                      <div className={`text-center py-4 text-sm ${styles.muted}`}>
                         No clients found. Add them in Admin Panel.
                       </div>
                     )}
@@ -2340,7 +2646,7 @@ function App() {
               <div className="flex justify-between items-start mb-8">
                 <div>
                   <h2 className="text-3xl font-black tracking-tighter">Add to Collection</h2>
-                  <p className="text-zinc-500 mt-2">Select a collection to add this item to.</p>
+                  <p className={`mt-2 ${styles.accent}`}>Select a collection to add this item to.</p>
                 </div>
                 <button onClick={() => setAddToCollectionModal({ show: false, clothingId: null })} className={`p-2 rounded-full transition-all ${styles.secondary}`}>
                   <X size={20} />
@@ -2420,8 +2726,8 @@ function App() {
               </div>
 
               {collectionItems.length === 0 ? (
-                <div className="py-20 text-center border-2 border-dashed border-zinc-200 rounded-3xl">
-                  <p className="text-zinc-500 text-lg">This collection is currently empty.</p>
+                <div className={`py-20 text-center border-2 border-dashed rounded-3xl ${styles.border}`}>
+                  <p className={`text-lg ${styles.accent}`}>This collection is currently empty.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -2524,7 +2830,7 @@ function App() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter password"
-                  className={`w-full py-4 px-6 rounded-2xl font-bold focus:outline-none focus:ring-2 focus:ring-black transition-all border ${styles.input}`}
+                  className={`w-full py-4 px-6 rounded-2xl font-bold focus:outline-none focus:ring-2 transition-all border ${styles.input} ${theme === 'dark' ? 'focus:ring-white' : 'focus:ring-black'}`}
                 />
                 <button 
                   onClick={handleLogin}
@@ -2579,7 +2885,7 @@ function App() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className={`w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl border ${styles.modal} ${theme === 'dark' ? 'border-zinc-800' : 'border-zinc-100'}`}
+              className={`w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl border ${styles.modal} ${styles.border}`}
             >
               <h3 className={`text-2xl font-black tracking-tight mb-2 ${styles.text}`}>{confirmModal.title}</h3>
               <p className={`mb-8 ${styles.accent}`}>{confirmModal.message}</p>
@@ -2606,7 +2912,10 @@ function App() {
       <AnimatePresence>
         {showAdminPanel && isAdmin && (
           <AdminPanel 
-            onClose={() => setShowAdminPanel(false)} 
+            onClose={() => {
+              setShowAdminPanel(false);
+              setIsAdmin(false);
+            }} 
             rentals={rentals}
             clothes={clothes}
             collections={collections}
@@ -2618,23 +2927,25 @@ function App() {
             setAddToCollectionModal={setAddToCollectionModal}
             seedSampleData={seedSampleData}
             isSubmitting={isSubmitting}
+            currentCompany={currentCompany}
+            isViewOnly={isViewOnly}
           />
         )}
       </AnimatePresence>
 
       {/* Footer */}
-      <footer className="border-t border-zinc-200 py-12 px-6">
+      <footer className={`border-t py-12 px-6 ${styles.border}`}>
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
           <div className="flex items-center gap-2">
             <Logo size={32} />
-            <span className="font-bold tracking-tight">Şan Closet Studio</span>
+            <span className={`font-bold tracking-tight ${styles.text}`}>Şan Closet Studio</span>
           </div>
           <LanguageSwitcher />
-          <p className="text-zinc-400 text-sm">© 2026 Şan Closet Studio. All rights reserved.</p>
-          <div className="flex gap-6 text-zinc-400 text-sm font-medium">
-            <a href="#" className="hover:text-black transition-colors">Privacy</a>
-            <a href="#" className="hover:text-black transition-colors">Terms</a>
-            <a href="#" className="hover:text-black transition-colors">Support</a>
+          <p className={`text-sm ${styles.muted}`}>© 2026 Şan Closet Studio. All rights reserved.</p>
+          <div className={`flex gap-6 text-sm font-medium ${styles.muted}`}>
+            <a href="#" className={`transition-colors hover:opacity-80`}>Privacy</a>
+            <a href="#" className={`transition-colors hover:opacity-80`}>Terms</a>
+            <a href="#" className={`transition-colors hover:opacity-80`}>Support</a>
           </div>
         </div>
       </footer>
