@@ -39,6 +39,7 @@ import {
   orderBy,
   Timestamp,
   getDocs,
+  getDoc,
   writeBatch,
   arrayUnion,
   arrayRemove
@@ -398,7 +399,7 @@ const Navbar = ({ isAdmin, onOpenAdmin, t, currentCompany, isViewOnly, onLogout 
   );
 };
 
-const ClothingCard = ({ item, onAddToCollection, onRent, isRented, activeRentals = [], isViewOnly = false, companySlug }: { 
+const ClothingCard = ({ item, onAddToCollection, onRent, isRented, activeRentals = [], isViewOnly = false, companySlug, setNotification }: { 
   item: ClothingItem, 
   onAddToCollection?: (id: string) => void, 
   onRent?: (id: string) => void,
@@ -406,6 +407,7 @@ const ClothingCard = ({ item, onAddToCollection, onRent, isRented, activeRentals
   activeRentals?: Rental[],
   isViewOnly?: boolean,
   companySlug?: string,
+  setNotification?: (notif: {message: string, type: 'success' | 'error'} | null) => void,
   key?: React.Key 
 }) => {
   const { t } = useTranslation();
@@ -465,7 +467,11 @@ const ClothingCard = ({ item, onAddToCollection, onRent, isRented, activeRentals
             const slug = companySlug || item.company_id;
             const shareUrl = `${window.location.origin}${window.location.pathname}?view=${slug}&search=${encodeURIComponent(item.name)}`;
             navigator.clipboard.writeText(shareUrl);
-            alert('Item link copied to clipboard!');
+            if (setNotification) {
+              setNotification({ message: "Item link copied to clipboard!", type: "success" });
+            } else {
+              alert('Item link copied to clipboard!');
+            }
           }}
           className={`absolute top-4 right-4 p-2 backdrop-blur-md rounded-full shadow-lg transition-all hover:scale-110 ${theme === 'dark' ? 'bg-white/20 text-white hover:bg-white/40' : 'bg-black/20 text-white hover:bg-black/40'}`}
           title="Share Item"
@@ -1092,6 +1098,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                       item={item} 
                       isViewOnly={isViewOnly}
                       companySlug={currentCompany?.slug}
+                      setNotification={setNotification}
                       onAddToCollection={(id) => setAddToCollectionModal({show: true, clothingId: id})}
                       activeRentals={rentals.filter(r => r.clothing_id === item.id && r.status === 'active')}
                     />
@@ -1878,7 +1885,8 @@ function App() {
   
   useEffect(() => {
     const lastLogin = localStorage.getItem('adminLoginTime');
-    if (lastLogin && Date.now() - parseInt(lastLogin) < 5 * 60 * 1000) {
+    // Extend session to 2 hours
+    if (lastLogin && Date.now() - parseInt(lastLogin) < 120 * 60 * 1000) {
       setIsAdmin(true);
     }
   }, []);
@@ -1888,9 +1896,8 @@ function App() {
       setCurrentUser(user);
       if (user && user.email === "miranluqman60@gmail.com") {
         setIsAdmin(true);
-      } else {
-        setIsAdmin(false);
       }
+      // Don't set isAdmin(false) here, as it might have been set by password login
     });
     return () => unsubAuth();
   }, []);
@@ -1904,44 +1911,74 @@ function App() {
     const companySlug = params.get('company') || params.get('view');
     
     const checkCompany = async () => {
-      if (companySlug) {
-        const q = query(collection(db, "companies"), where("slug", "==", companySlug));
-        const snapshot = await getDocs(q);
-        if (!snapshot.empty) {
-          const companyData = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as Company;
-          setCurrentCompany(companyData);
-          setIsViewOnly(true);
-          
-          const searchParam = params.get('search');
-          if (searchParam) {
-            setSearchQuery(searchParam);
-          }
-        }
-      } else {
-        const savedCompanyId = localStorage.getItem('companyId');
-        if (savedCompanyId) {
-          const q = query(collection(db, "companies"), where("__name__", "==", savedCompanyId));
+      console.log("Checking company for slug:", companySlug);
+      try {
+        if (companySlug) {
+          // Try slug first
+          const q = query(collection(db, "companies"), where("slug", "==", companySlug));
           const snapshot = await getDocs(q);
+          console.log("Snapshot empty:", snapshot.empty);
+          
           if (!snapshot.empty) {
-            setCurrentCompany({ id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as Company);
+            const companyData = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as Company;
+            setCurrentCompany(companyData);
+            setIsViewOnly(true);
+            
+            const searchParam = params.get('search');
+            if (searchParam) {
+              setSearchQuery(searchParam);
+            }
+          } else {
+            // Try ID as fallback
+            try {
+              const docRef = doc(db, "companies", companySlug);
+              const docSnap = await getDoc(docRef);
+              console.log("Doc exists:", docSnap.exists());
+              if (docSnap.exists()) {
+                const companyData = { id: docSnap.id, ...docSnap.data() } as Company;
+                setCurrentCompany(companyData);
+                setIsViewOnly(true);
+                
+                const searchParam = params.get('search');
+                if (searchParam) {
+                  setSearchQuery(searchParam);
+                }
+              }
+            } catch (e) {
+              console.log("Not a valid ID, skipping fallback");
+            }
+          }
+        } else {
+          const savedCompanyId = localStorage.getItem('companyId');
+          if (savedCompanyId) {
+            const docRef = doc(db, "companies", savedCompanyId);
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+              setCurrentCompany({ id: docSnap.id, ...docSnap.data() } as Company);
+            }
           }
         }
+      } catch (err) {
+        console.error("Error checking company:", err);
+      } finally {
+        setIsCompanyLoading(false);
       }
-      setIsCompanyLoading(false);
     };
 
     checkCompany();
   }, []);
 
   useEffect(() => {
-    if (!currentCompany) return;
+    // If company is loading, don't do anything yet
+    if (isCompanyLoading) return;
+
+    let clothesQuery = query(collection(db, "clothes"), orderBy("created_at", "desc"));
+    if (currentCompany) {
+      clothesQuery = query(collection(db, "clothes"), where("company_id", "==", currentCompany.id), orderBy("created_at", "desc"));
+    }
 
     const unsubClothes = onSnapshot(
-      query(
-        collection(db, "clothes"), 
-        where("company_id", "==", currentCompany.id),
-        orderBy("created_at", "desc")
-      ), 
+      clothesQuery, 
       (snapshot) => {
         setClothes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ClothingItem)));
       }, 
@@ -1950,11 +1987,13 @@ function App() {
       }
     );
 
+    let collectionsQuery = query(collection(db, "collections"));
+    if (currentCompany) {
+      collectionsQuery = query(collection(db, "collections"), where("company_id", "==", currentCompany.id));
+    }
+
     const unsubCollections = onSnapshot(
-      query(
-        collection(db, "collections"),
-        where("company_id", "==", currentCompany.id)
-      ), 
+      collectionsQuery, 
       (snapshot) => {
         setCollections(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Collection)));
       }, 
@@ -1966,7 +2005,7 @@ function App() {
     let unsubRentals = () => {};
     let unsubClients = () => {};
 
-    if (isAdmin && !isViewOnly) {
+    if (isAdmin && !isViewOnly && currentCompany) {
       unsubRentals = onSnapshot(
         query(
           collection(db, "rentals"), 
@@ -2005,7 +2044,7 @@ function App() {
       unsubRentals();
       unsubClients();
     };
-  }, [currentCompany, isAdmin, isViewOnly]);
+  }, [currentCompany, isAdmin, isViewOnly, isCompanyLoading]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
@@ -2515,6 +2554,7 @@ function App() {
                     item={item} 
                     isViewOnly={isViewOnly}
                     companySlug={currentCompany?.slug}
+                    setNotification={setNotification}
                     onRent={() => handleRentClick(item)}
                     activeRentals={rentals.filter(r => r.clothing_id === item.id && r.status === 'active')}
                   />
