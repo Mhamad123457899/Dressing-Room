@@ -215,36 +215,154 @@ class ErrorBoundary extends React.Component<any, any> {
   }
 }
 
+// --- Theme Context ---
+
+type Theme = 'light' | 'dark' | 'comfort' | 'rose';
+
+interface ThemeContextType {
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
+}
+
+const ThemeContext = React.createContext<ThemeContextType>({ theme: 'light', setTheme: () => {} });
+
+const useTheme = () => React.useContext(ThemeContext);
+
+const THEMES = {
+  light: {
+    bg: "bg-[#F8F8F8]",
+    text: "text-zinc-900",
+    navbar: "bg-white/80 border-zinc-200",
+    card: "bg-white border-zinc-200",
+    button: "bg-black text-white hover:bg-zinc-800",
+    secondary: "bg-zinc-100 text-zinc-700 hover:bg-zinc-200",
+    accent: "text-zinc-500",
+    input: "bg-white border-zinc-200 focus:border-black",
+    modal: "bg-white"
+  },
+  dark: {
+    bg: "bg-zinc-950",
+    text: "text-zinc-100",
+    navbar: "bg-zinc-900/80 border-zinc-800",
+    card: "bg-zinc-900 border-zinc-800",
+    button: "bg-white text-black hover:bg-zinc-200",
+    secondary: "bg-zinc-800 text-zinc-300 hover:bg-zinc-700",
+    accent: "text-zinc-400",
+    input: "bg-zinc-900 border-zinc-800 focus:border-white",
+    modal: "bg-zinc-900"
+  },
+  comfort: {
+    bg: "bg-[#fdf6e3]",
+    text: "text-[#586e75]",
+    navbar: "bg-[#eee8d5]/90 border-[#d3cbb7]",
+    card: "bg-[#eee8d5] border-[#d3cbb7]",
+    button: "bg-[#b58900] text-white hover:bg-[#a57800]",
+    secondary: "bg-[#d3cbb7] text-[#586e75] hover:bg-[#c2bcdd]",
+    accent: "text-[#93a1a1]",
+    input: "bg-[#eee8d5] border-[#d3cbb7] focus:border-[#b58900]",
+    modal: "bg-[#fdf6e3]"
+  },
+  rose: {
+    bg: "bg-[#fff1f2]",
+    text: "text-[#881337]",
+    navbar: "bg-[#ffe4e6]/90 border-[#fecdd3]",
+    card: "bg-white/60 border-[#fecdd3]",
+    button: "bg-[#be123c] text-white hover:bg-[#9f1239]",
+    secondary: "bg-[#ffe4e6] text-[#881337] hover:bg-[#fecdd3]",
+    accent: "text-[#be123c]",
+    input: "bg-white/80 border-[#fecdd3] focus:border-[#be123c]",
+    modal: "bg-[#fff1f2]"
+  }
+};
+
+const ThemeProvider = ({ children }: { children: ReactNode }) => {
+  const [theme, setTheme] = useState<Theme>('light');
+  
+  useEffect(() => {
+    const saved = localStorage.getItem('app-theme') as Theme;
+    if (saved && THEMES[saved]) {
+      setTheme(saved);
+    }
+  }, []);
+
+  const handleSetTheme = (t: Theme) => {
+    setTheme(t);
+    localStorage.setItem('app-theme', t);
+  };
+
+  return (
+    <ThemeContext.Provider value={{ theme, setTheme: handleSetTheme }}>
+      {children}
+    </ThemeContext.Provider>
+  );
+};
+
 // --- Components ---
 
 import { LanguageSwitcher } from './components/LanguageSwitcher';
 // ... (rest of imports)
-const Navbar = ({ isAdmin, onLogout, onOpenAdmin, t }: { isAdmin: boolean, onLogout: () => void, onOpenAdmin: () => void, t: any }) => (
-  <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-zinc-200 px-6 py-4 flex justify-between items-center">
-    <div className="flex items-center gap-2">
-      <Logo size={60} />
-      <h1 className="text-xl font-bold tracking-tight text-zinc-900">Şan Closet Studio</h1>
-    </div>
-    <div className="flex items-center gap-4">
-      <button 
-        onClick={onOpenAdmin}
-        className="flex items-center gap-2 px-4 py-2 rounded-full bg-black hover:bg-zinc-800 text-white transition-colors font-medium whitespace-nowrap"
-      >
-        <Settings size={18} />
-        <span className="hidden sm:inline">{t('Admin Panel')}</span>
-      </button>
-      {isAdmin ? (
+const Navbar = ({ isAdmin, onLogout, onOpenAdmin, t }: { isAdmin: boolean, onLogout: () => void, onOpenAdmin: () => void, t: any }) => {
+  const { theme, setTheme } = useTheme();
+  const [showThemeMenu, setShowThemeMenu] = useState(false);
+  const styles = THEMES[theme];
+
+  return (
+    <nav className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-md border-b px-6 py-4 flex justify-between items-center transition-colors duration-300 ${styles.navbar}`}>
+      <div className="flex items-center gap-4">
+        <Logo size={110} />
+        <h1 className={`text-xl font-bold tracking-tight ${styles.text}`}>Şan Closet Studio</h1>
+      </div>
+      <div className="flex items-center gap-4">
+        <div className="relative">
+          <button 
+            onClick={() => setShowThemeMenu(!showThemeMenu)}
+            className={`p-2 rounded-full transition-colors ${styles.secondary}`}
+            title="Change Theme"
+          >
+            <Palette size={20} />
+          </button>
+          
+          {showThemeMenu && (
+            <div className={`absolute top-full right-0 mt-2 p-2 rounded-xl shadow-xl border min-w-[150px] ${styles.card} z-50`}>
+              <div className="flex flex-col gap-1">
+                {(['light', 'dark', 'comfort', 'rose'] as Theme[]).map((tOption) => (
+                  <button
+                    key={tOption}
+                    onClick={() => {
+                      setTheme(tOption);
+                      setShowThemeMenu(false);
+                    }}
+                    className={`px-3 py-2 rounded-lg text-left text-sm font-medium transition-colors capitalize flex items-center justify-between ${theme === tOption ? styles.button : styles.secondary}`}
+                  >
+                    {tOption}
+                    {theme === tOption && <Check size={14} />}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
         <button 
-          onClick={onLogout}
-          className="flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-700 transition-colors font-medium whitespace-nowrap"
+          onClick={onOpenAdmin}
+          className={`flex items-center gap-2 px-4 py-2 rounded-full transition-colors font-medium whitespace-nowrap ${styles.button}`}
         >
-          <LogOut size={18} />
-          <span className="hidden sm:inline">{t('Logout')}</span>
+          <Settings size={18} />
+          <span className="hidden sm:inline">{t('Admin Panel')}</span>
         </button>
-      ) : null}
-    </div>
-  </nav>
-);
+        {isAdmin ? (
+          <button 
+            onClick={onLogout}
+            className={`flex items-center gap-2 px-4 py-2 rounded-full transition-colors font-medium whitespace-nowrap ${styles.secondary}`}
+          >
+            <LogOut size={18} />
+            <span className="hidden sm:inline">{t('Logout')}</span>
+          </button>
+        ) : null}
+      </div>
+    </nav>
+  );
+};
 
 const ClothingCard = ({ item, onAddToCollection, onRent, isRented, activeRentals = [] }: { 
   item: ClothingItem, 
@@ -255,6 +373,8 @@ const ClothingCard = ({ item, onAddToCollection, onRent, isRented, activeRentals
   key?: React.Key 
 }) => {
   const { t } = useTranslation();
+  const { theme } = useTheme();
+  const styles = THEMES[theme];
   const [selectedSize, setSelectedSize] = useState(item.sizes[0]);
   const selectedColor = item.color;
 
@@ -277,9 +397,9 @@ const ClothingCard = ({ item, onAddToCollection, onRent, isRented, activeRentals
       layout
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`group bg-white rounded-3xl border border-zinc-200 overflow-hidden hover:shadow-xl transition-all duration-300 ${isCurrentlyRented ? 'opacity-75 grayscale-[0.5]' : ''}`}
+      className={`group rounded-3xl overflow-hidden hover:shadow-xl transition-all duration-300 ${styles.card} ${isCurrentlyRented ? 'opacity-75 grayscale-[0.5]' : ''}`}
     >
-      <div className="relative aspect-[3/4] overflow-hidden bg-zinc-100">
+      <div className={`relative aspect-[3/4] overflow-hidden ${styles.secondary}`}>
         <img 
           src={item.image_url || `https://picsum.photos/seed/${item.id}/400/600`} 
           alt={item.name}
@@ -307,8 +427,8 @@ const ClothingCard = ({ item, onAddToCollection, onRent, isRented, activeRentals
       <div className="p-5">
         <div className="flex justify-between items-start mb-4">
           <div>
-            <h3 className="text-lg font-bold text-zinc-900 mb-1">{item.name}</h3>
-            <div className="flex items-center gap-3 text-zinc-500 text-xs">
+            <h3 className={`text-lg font-bold mb-1 ${styles.text}`}>{item.name}</h3>
+            <div className={`flex items-center gap-3 text-xs ${styles.accent}`}>
               <span className="flex items-center gap-1"><User size={12} /> {item.age_group}</span>
               <span className="flex items-center gap-1"><Cloud size={12} /> {t(item.weather)}</span>
             </div>
@@ -317,7 +437,7 @@ const ClothingCard = ({ item, onAddToCollection, onRent, isRented, activeRentals
 
         <div className="space-y-4">
           <div>
-            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">{t('Available Sizes')}</p>
+            <p className={`text-[10px] font-bold uppercase tracking-widest mb-2 ${styles.accent}`}>{t('Available Sizes')}</p>
             <div className="flex flex-wrap gap-2">
               {availableSizes.length > 0 ? availableSizes.map(size => (
                 <button
@@ -326,22 +446,22 @@ const ClothingCard = ({ item, onAddToCollection, onRent, isRented, activeRentals
                   disabled={isCurrentlyRented}
                   className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${
                     selectedSize === size 
-                      ? "bg-black text-white shadow-lg scale-110" 
-                      : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 disabled:opacity-50"
+                      ? styles.button + " shadow-lg scale-110" 
+                      : styles.secondary + " disabled:opacity-50"
                   }`}
                 >
                   {size}
                 </button>
               )) : (
-                <span className="text-xs text-zinc-400 font-medium">No sizes available</span>
+                <span className={`text-xs font-medium ${styles.accent}`}>No sizes available</span>
               )}
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{t('Color')}</p>
+            <p className={`text-[10px] font-bold uppercase tracking-widest ${styles.accent}`}>{t('Color')}</p>
             <div className="w-6 h-6 rounded-full border border-zinc-200" style={{ backgroundColor: (item.color || "").toLowerCase() }} />
-            <span className="text-xs text-zinc-600 font-medium capitalize">{t(item.color)}</span>
+            <span className={`text-xs font-medium capitalize ${styles.accent}`}>{t(item.color)}</span>
           </div>
 
           <div className="flex flex-col gap-2">
@@ -349,7 +469,7 @@ const ClothingCard = ({ item, onAddToCollection, onRent, isRented, activeRentals
               <button 
                 onClick={() => onRent(item.id)}
                 disabled={isCurrentlyRented}
-                className="w-full py-3 bg-black hover:bg-zinc-800 text-white rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 disabled:bg-zinc-300 disabled:cursor-not-allowed"
+                className={`w-full py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${styles.button}`}
               >
                 <Tag size={16} />
                 {isCurrentlyRented ? t('Rented') : t('Rent Now')}
@@ -362,7 +482,7 @@ const ClothingCard = ({ item, onAddToCollection, onRent, isRented, activeRentals
                   e.preventDefault();
                   onAddToCollection(item.id);
                 }}
-                className="w-full py-3 bg-zinc-100 hover:bg-zinc-200 text-zinc-900 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2"
+                className={`w-full py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${styles.secondary}`}
               >
                 <Plus size={16} />
                 Add to Collection
@@ -389,6 +509,8 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
   seedSampleData: () => Promise<void>,
   isSubmitting: boolean
 }) => {
+  const { theme } = useTheme();
+  const styles = THEMES[theme];
   const [activeTab, setActiveTab] = useState<"clothes" | "collections" | "rentals" | "clients">("clothes");
   const [rentalFilter, setRentalFilter] = useState<"active" | "all">("active");
   const [rentalSearch, setRentalSearch] = useState("");
@@ -656,26 +778,26 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
   };
 
   return (
-    <div ref={panelRef} className="fixed inset-0 z-[100] bg-white overflow-y-auto">
+    <div ref={panelRef} className={`fixed inset-0 z-[100] overflow-y-auto ${styles.bg} ${styles.text}`}>
       <div className="max-w-6xl mx-auto px-6 py-12">
         <div className="flex justify-between items-center mb-12">
           <div>
-            <h2 className="text-4xl font-black tracking-tighter text-zinc-900">Admin Dashboard</h2>
-            <p className="text-zinc-500 mt-2">Manage your dressing room inventory, collections, and clients.</p>
+            <h2 className={`text-4xl font-black tracking-tighter ${styles.text}`}>Admin Dashboard</h2>
+            <p className={`mt-2 ${styles.accent}`}>Manage your dressing room inventory, collections, and clients.</p>
           </div>
           <button 
             onClick={onClose}
-            className="p-3 bg-zinc-100 hover:bg-zinc-200 rounded-full text-zinc-600 transition-all"
+            className={`p-3 rounded-full transition-all ${styles.secondary}`}
           >
             <X size={24} />
           </button>
         </div>
 
-        <div className="flex flex-wrap gap-4 mb-12 border-b border-zinc-100 pb-4">
+        <div className={`flex flex-wrap gap-4 mb-12 border-b pb-4 ${theme === 'dark' ? 'border-zinc-800' : 'border-zinc-100'}`}>
           <button 
             onClick={() => { setActiveTab("clothes"); setInventorySearch(""); }}
             className={`px-6 py-2 rounded-full font-bold transition-all ${
-              activeTab === "clothes" ? "bg-black text-white" : "text-zinc-400 hover:text-zinc-600"
+              activeTab === "clothes" ? styles.button : `${styles.accent} hover:opacity-80`
             }`}
           >
             Inventory
@@ -683,7 +805,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
           <button 
             onClick={() => { setActiveTab("collections"); setCollectionSearch(""); }}
             className={`px-6 py-2 rounded-full font-bold transition-all ${
-              activeTab === "collections" ? "bg-black text-white" : "text-zinc-400 hover:text-zinc-600"
+              activeTab === "collections" ? styles.button : `${styles.accent} hover:opacity-80`
             }`}
           >
             TVC Wardrobe
@@ -691,7 +813,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
           <button 
             onClick={() => { setActiveTab("clients"); setClientSearch(""); }}
             className={`px-6 py-2 rounded-full font-bold transition-all ${
-              activeTab === "clients" ? "bg-black text-white" : "text-zinc-400 hover:text-zinc-600"
+              activeTab === "clients" ? styles.button : `${styles.accent} hover:opacity-80`
             }`}
           >
             Client Accounts
@@ -699,7 +821,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
           <button 
             onClick={() => { setActiveTab("rentals"); setRentalSearch(""); }}
             className={`px-6 py-2 rounded-full font-bold transition-all ${
-              activeTab === "rentals" ? "bg-black text-white" : "text-zinc-400 hover:text-zinc-600"
+              activeTab === "rentals" ? styles.button : `${styles.accent} hover:opacity-80`
             }`}
           >
             Active Rentals
@@ -709,7 +831,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
         {activeTab === "clothes" ? (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
             <div className="lg:col-span-1">
-              <div className="bg-zinc-50 p-8 rounded-3xl border border-zinc-100 sticky top-12">
+              <div className={`p-8 rounded-3xl border sticky top-12 ${styles.card}`}>
                 <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
                   <Plus className="text-emerald-500" /> {editingCloth ? 'Edit Item' : 'Add New Item'}
                 </h3>
@@ -717,7 +839,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                   <button 
                     onClick={seedSampleData}
                     disabled={isSubmitting}
-                    className="w-full py-2 bg-zinc-100 text-zinc-600 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-zinc-200 transition-all"
+                    className={`w-full py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${styles.secondary}`}
                   >
                     {isSubmitting ? 'Seeding...' : 'Seed Sample Data'}
                   </button>
@@ -730,7 +852,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                       required
                       value={newCloth.name}
                       onChange={e => setNewCloth({...newCloth, name: e.target.value})}
-                      className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-xl focus:ring-2 focus:ring-black outline-none transition-all"
+                      className={`w-full px-4 py-3 rounded-xl focus:ring-2 focus:ring-black outline-none transition-all border ${styles.input}`}
                       placeholder="e.g. Summer Linen Shirt"
                     />
                   </div>
@@ -741,7 +863,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                       <select 
                         value={newCloth.type}
                         onChange={e => setNewCloth({...newCloth, type: e.target.value})}
-                        className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-xl outline-none"
+                        className={`w-full px-4 py-3 rounded-xl outline-none border ${styles.input}`}
                       >
                         {CLOTHING_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                       </select>
@@ -751,7 +873,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                       <select 
                         value={newCloth.model}
                         onChange={e => setNewCloth({...newCloth, model: e.target.value})}
-                        className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-xl outline-none"
+                        className={`w-full px-4 py-3 rounded-xl outline-none border ${styles.input}`}
                       >
                         {MODELS.map(m => <option key={m} value={m}>{m}</option>)}
                       </select>
@@ -774,13 +896,13 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                             }
                           }
                         }}
-                        className="flex-1 px-4 py-3 bg-white border border-zinc-200 rounded-xl outline-none"
+                        className={`flex-1 px-4 py-3 rounded-xl outline-none border ${styles.input}`}
                         placeholder="S, M, L..."
                       />
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {newCloth.sizes.map(s => (
-                        <span key={s} className="px-3 py-1 bg-zinc-200 rounded-lg text-xs font-bold flex items-center gap-1">
+                        <span key={s} className={`px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1 ${styles.secondary}`}>
                           {s} <X size={12} className="cursor-pointer" onClick={() => setNewCloth({...newCloth, sizes: newCloth.sizes.filter(x => x !== s)})} />
                         </span>
                       ))}
@@ -793,7 +915,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                       type="text" 
                       value={newCloth.color}
                       onChange={e => setNewCloth({...newCloth, color: e.target.value})}
-                      className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-xl outline-none"
+                      className={`w-full px-4 py-3 rounded-xl outline-none border ${styles.input}`}
                       placeholder="Red"
                     />
                   </div>
@@ -804,7 +926,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                       <select 
                         value={newCloth.age_group}
                         onChange={e => setNewCloth({...newCloth, age_group: e.target.value})}
-                        className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-xl outline-none"
+                        className={`w-full px-4 py-3 rounded-xl outline-none border ${styles.input}`}
                       >
                         {AGE_GROUPS.map(a => <option key={a} value={a}>{a}</option>)}
                       </select>
@@ -814,7 +936,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                       <select 
                         value={newCloth.weather}
                         onChange={e => setNewCloth({...newCloth, weather: e.target.value})}
-                        className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-xl outline-none"
+                        className={`w-full px-4 py-3 rounded-xl outline-none border ${styles.input}`}
                       >
                         {WEATHER_TYPES.map(w => <option key={w} value={w}>{w}</option>)}
                       </select>
@@ -824,7 +946,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                       <select 
                         value={newCloth.section}
                         onChange={e => setNewCloth({...newCloth, section: e.target.value})}
-                        className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-xl outline-none"
+                        className={`w-full px-4 py-3 rounded-xl outline-none border ${styles.input}`}
                       >
                         {SECTIONS.map(s => <option key={s} value={s}>Section {s}</option>)}
                       </select>
@@ -838,7 +960,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                         type="text" 
                         value={newCloth.image_url}
                         onChange={e => setNewCloth({...newCloth, image_url: e.target.value})}
-                        className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-xl outline-none pr-10"
+                        className={`w-full px-4 py-3 rounded-xl outline-none pr-10 border ${styles.input}`}
                         placeholder="https://images.unsplash.com/..."
                       />
                       {newCloth.image_url && (
@@ -852,7 +974,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                       )}
                     </div>
                     {newCloth.image_url && (
-                      <div className="mt-4 w-full h-48 rounded-xl overflow-hidden bg-zinc-100 border border-zinc-200">
+                      <div className={`mt-4 w-full h-48 rounded-xl overflow-hidden border ${styles.card} ${styles.secondary}`}>
                         <img src={newCloth.image_url} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                       </div>
                     )}
@@ -860,7 +982,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
 
                   <button 
                     type="submit"
-                    className="w-full py-4 bg-black text-white rounded-2xl font-black uppercase tracking-widest hover:bg-zinc-800 transition-all shadow-xl"
+                    className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest transition-all shadow-xl ${styles.button}`}
                   >
                     {editingCloth ? 'Update Item' : 'Add to Inventory'}
                   </button>
@@ -894,7 +1016,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                     placeholder="Search inventory..."
                     value={inventorySearch}
                     onChange={e => setInventorySearch(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 bg-white border border-zinc-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-black"
+                    className={`w-full pl-9 pr-4 py-2 rounded-xl text-xs outline-none focus:ring-1 focus:ring-black border ${styles.input}`}
                   />
                 </div>
               </div>
@@ -917,7 +1039,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                     <div className="absolute top-4 right-4 flex gap-2 z-10">
                       <button 
                         onClick={() => handleEditCloth(item)}
-                        className="p-2 bg-white text-zinc-900 rounded-full hover:bg-black hover:text-white transition-all shadow-lg"
+                        className={`p-2 rounded-full transition-all shadow-lg ${styles.button}`}
                         title="Edit Item"
                       >
                         <Settings size={16} />
@@ -938,7 +1060,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
         ) : activeTab === "collections" ? (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
             <div className="lg:col-span-1">
-              <div className="bg-zinc-50 p-8 rounded-3xl border border-zinc-100 sticky top-12">
+              <div className={`p-8 rounded-3xl border sticky top-12 ${styles.card}`}>
                 <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
                   <Calendar className="text-blue-500" /> {editingCollection ? 'Edit Collection' : 'New Collection'}
                 </h3>
@@ -950,7 +1072,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                       required
                       value={newCollection.name}
                       onChange={e => setNewCollection({...newCollection, name: e.target.value})}
-                      className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-xl outline-none"
+                      className={`w-full px-4 py-3 rounded-xl outline-none border ${styles.input}`}
                       placeholder="e.g. Wedding Event 2024"
                     />
                   </div>
@@ -960,7 +1082,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                       type="date" 
                       value={newCollection.event_date}
                       onChange={e => setNewCollection({...newCollection, event_date: e.target.value})}
-                      className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-xl outline-none"
+                      className={`w-full px-4 py-3 rounded-xl outline-none border ${styles.input}`}
                     />
                   </div>
                   <div>
@@ -969,7 +1091,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                       type="url" 
                       value={newCollection.image_url}
                       onChange={e => setNewCollection({...newCollection, image_url: e.target.value})}
-                      className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-xl outline-none"
+                      className={`w-full px-4 py-3 rounded-xl outline-none border ${styles.input}`}
                       placeholder="https://..."
                     />
                   </div>
@@ -978,7 +1100,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                     <textarea 
                       value={newCollection.description}
                       onChange={e => setNewCollection({...newCollection, description: e.target.value})}
-                      className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-xl outline-none h-32 resize-none"
+                      className={`w-full px-4 py-3 rounded-xl outline-none h-32 resize-none border ${styles.input}`}
                       placeholder="What is this collection for?"
                     />
                   </div>
@@ -1014,7 +1136,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                     placeholder="Search collections..."
                     value={collectionSearch}
                     onChange={e => setCollectionSearch(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 bg-white border border-zinc-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-black"
+                    className={`w-full pl-9 pr-4 py-2 rounded-xl text-xs outline-none focus:ring-1 focus:ring-black border ${styles.input}`}
                   />
                 </div>
               </div>
@@ -1025,7 +1147,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                     return col.name.toLowerCase().includes(s) || col.description.toLowerCase().includes(s);
                   })
                   .map(col => (
-                  <div key={col.id} className="bg-white p-6 rounded-3xl border border-zinc-200 flex justify-between items-center group hover:border-black transition-all">
+                  <div key={col.id} className={`p-6 rounded-3xl border flex justify-between items-center group hover:border-black transition-all ${styles.card}`}>
                     <div className="flex items-center gap-4">
                       {col.image_url && (
                         <img src={col.image_url} alt={col.name} className="w-16 h-16 rounded-xl object-cover" referrerPolicy="no-referrer" />
@@ -1041,7 +1163,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                     <div className="flex items-center gap-2">
                       <button 
                         onClick={() => handleEditCollection(col)}
-                        className="p-3 bg-zinc-100 hover:bg-black hover:text-white text-zinc-600 rounded-full transition-all"
+                        className={`p-3 rounded-full transition-all ${styles.secondary} hover:bg-black hover:text-white`}
                         title="Edit Collection"
                       >
                         <Settings size={20} />
@@ -1062,7 +1184,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
         ) : activeTab === "clients" ? (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
             <div className="lg:col-span-1">
-              <div className="bg-zinc-50 p-8 rounded-3xl border border-zinc-100 sticky top-12">
+              <div className={`p-8 rounded-3xl border sticky top-12 ${styles.card}`}>
                 <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
                   <User className="text-indigo-500" /> {editingClient ? 'Edit Client Account' : 'New Client Account'}
                 </h3>
@@ -1074,7 +1196,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                       required
                       value={newClient.full_name}
                       onChange={e => setNewClient({...newClient, full_name: e.target.value})}
-                      className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-xl outline-none"
+                      className={`w-full px-4 py-3 rounded-xl outline-none border ${styles.input}`}
                       placeholder="John Doe"
                     />
                   </div>
@@ -1085,7 +1207,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                       required
                       value={newClient.phone}
                       onChange={e => setNewClient({...newClient, phone: e.target.value})}
-                      className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-xl outline-none"
+                      className={`w-full px-4 py-3 rounded-xl outline-none border ${styles.input}`}
                       placeholder="+1234567890"
                     />
                   </div>
@@ -1095,7 +1217,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                       type="url" 
                       value={newClient.id_image_url}
                       onChange={e => setNewClient({...newClient, id_image_url: e.target.value})}
-                      className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-xl outline-none"
+                      className={`w-full px-4 py-3 rounded-xl outline-none border ${styles.input}`}
                       placeholder="https://..."
                     />
                   </div>
@@ -1106,7 +1228,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                         type="text" 
                         value={newClient.company_name}
                         onChange={e => setNewClient({...newClient, company_name: e.target.value})}
-                        className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-xl outline-none"
+                        className={`w-full px-4 py-3 rounded-xl outline-none border ${styles.input}`}
                         placeholder="Optional"
                       />
                     </div>
@@ -1116,7 +1238,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                         type="tel" 
                         value={newClient.company_phone}
                         onChange={e => setNewClient({...newClient, company_phone: e.target.value})}
-                        className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-xl outline-none"
+                        className={`w-full px-4 py-3 rounded-xl outline-none border ${styles.input}`}
                         placeholder="Optional"
                       />
                     </div>
@@ -1155,7 +1277,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                     placeholder="Search clients..."
                     value={clientSearch}
                     onChange={e => setClientSearch(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 bg-white border border-zinc-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-black"
+                    className={`w-full pl-9 pr-4 py-2 rounded-xl text-xs outline-none focus:ring-1 focus:ring-black border ${styles.input}`}
                   />
                 </div>
               </div>
@@ -1168,9 +1290,9 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                            (client.company_name && client.company_name.toLowerCase().includes(s));
                   })
                   .map(client => (
-                  <div key={client.id} className="bg-white p-6 rounded-3xl border border-zinc-200 group hover:border-black transition-all">
+                  <div key={client.id} className={`p-6 rounded-3xl border group hover:border-black transition-all ${styles.card}`}>
                     <div className="flex items-center gap-4 mb-4">
-                      <div className="w-12 h-12 rounded-full bg-zinc-100 overflow-hidden">
+                      <div className={`w-12 h-12 rounded-full overflow-hidden ${styles.secondary}`}>
                         {client.id_image_url ? (
                           <img src={client.id_image_url} alt={client.full_name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                         ) : (
@@ -1192,7 +1314,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                     <div className="flex gap-2 flex-wrap">
                       <button 
                         onClick={() => handleEditClient(client)}
-                        className="flex-1 py-2 bg-zinc-100 text-zinc-900 rounded-xl text-xs font-bold hover:bg-black hover:text-white transition-all"
+                        className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${styles.secondary} hover:bg-black hover:text-white`}
                       >
                         Edit
                       </button>
@@ -1221,7 +1343,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
         ) : (
           <div className="space-y-8">
             {editingRental && (
-              <div className="bg-zinc-50 p-8 rounded-3xl border border-zinc-100 mb-8">
+              <div className={`p-8 rounded-3xl border mb-8 ${styles.card}`}>
                 <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
                   <Settings className="text-zinc-900" /> Edit Rental Record
                 </h3>
@@ -1231,7 +1353,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                     <select 
                       value={editRentalForm.client_id || ""}
                       onChange={e => setEditRentalForm({...editRentalForm, client_id: e.target.value})}
-                      className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-xl outline-none"
+                      className={`w-full px-4 py-3 rounded-xl outline-none border ${styles.input}`}
                     >
                       <option value="">Select Client</option>
                       {clients.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
@@ -1243,7 +1365,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                       type="text"
                       value={editRentalForm.size}
                       onChange={e => setEditRentalForm({...editRentalForm, size: e.target.value})}
-                      className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-xl outline-none"
+                      className={`w-full px-4 py-3 rounded-xl outline-none border ${styles.input}`}
                     />
                   </div>
                   <div>
@@ -1252,7 +1374,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                       type="text"
                       value={editRentalForm.color}
                       onChange={e => setEditRentalForm({...editRentalForm, color: e.target.value})}
-                      className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-xl outline-none"
+                      className={`w-full px-4 py-3 rounded-xl outline-none border ${styles.input}`}
                     />
                   </div>
                   <div>
@@ -1260,7 +1382,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                     <select 
                       value={editRentalForm.status}
                       onChange={e => setEditRentalForm({...editRentalForm, status: e.target.value})}
-                      className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-xl outline-none"
+                      className={`w-full px-4 py-3 rounded-xl outline-none border ${styles.input}`}
                     >
                       <option value="active">Active</option>
                       <option value="returned">Returned</option>
@@ -1269,14 +1391,14 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                   <div className="md:col-span-4 flex gap-4">
                     <button 
                       type="submit"
-                      className="flex-1 py-4 bg-black text-white rounded-2xl font-black uppercase tracking-widest hover:bg-zinc-800 transition-all shadow-xl"
+                      className={`flex-1 py-4 rounded-2xl font-black uppercase tracking-widest transition-all shadow-xl ${styles.button}`}
                     >
                       Update Rental
                     </button>
                     <button 
                       type="button"
                       onClick={() => setEditingRental(null)}
-                      className="px-8 py-4 bg-zinc-100 text-zinc-600 rounded-2xl font-bold hover:bg-zinc-200 transition-all"
+                      className={`px-8 py-4 rounded-2xl font-bold transition-all ${styles.secondary}`}
                     >
                       Cancel
                     </button>
@@ -1288,16 +1410,16 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div className="flex flex-col gap-1">
                 <h3 className="text-xl font-bold">Store Rentals</h3>
-                <div className="flex gap-2 p-1 bg-zinc-100 rounded-xl w-fit">
+                <div className={`flex gap-2 p-1 rounded-xl w-fit ${styles.secondary}`}>
                   <button 
                     onClick={() => setRentalFilter("active")}
-                    className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${rentalFilter === "active" ? "bg-white shadow-sm text-black" : "text-zinc-500 hover:text-zinc-700"}`}
+                    className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${rentalFilter === "active" ? styles.button : `${styles.secondary} border-transparent`}`}
                   >
                     Active ({rentals.filter(r => r.status === 'active').length})
                   </button>
                   <button 
                     onClick={() => setRentalFilter("all")}
-                    className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${rentalFilter === "all" ? "bg-white shadow-sm text-black" : "text-zinc-500 hover:text-zinc-700"}`}
+                    className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${rentalFilter === "all" ? styles.button : `${styles.secondary} border-transparent`}`}
                   >
                     All History ({rentals.length})
                   </button>
@@ -1310,7 +1432,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                   placeholder="Search client name/phone..."
                   value={rentalSearch}
                   onChange={e => setRentalSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-zinc-50 border border-zinc-200 rounded-xl outline-none"
+                  className={`w-full pl-10 pr-4 py-2 rounded-xl outline-none border ${styles.input}`}
                 />
               </div>
             </div>
@@ -1327,16 +1449,16 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                          r.color.toLowerCase().includes(s);
                 })
                 .map(rental => (
-                <div key={rental.id} className={`bg-white p-6 rounded-3xl border border-zinc-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 transition-all ${rental.status === 'returned' ? 'opacity-60 grayscale-[0.3]' : ''}`}>
+                <div key={rental.id} className={`p-6 rounded-3xl border flex flex-col md:flex-row justify-between items-start md:items-center gap-6 transition-all ${styles.card} ${rental.status === 'returned' ? 'opacity-60 grayscale-[0.3]' : ''}`}>
                   <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-xl overflow-hidden bg-zinc-100">
+                    <div className={`w-16 h-16 rounded-xl overflow-hidden ${styles.secondary}`}>
                       <img src={rental.image_url} alt={rental.clothing_name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
                         <h4 className="font-bold text-lg">{rental.client_full_name || rental.client_name}</h4>
                         {rental.status === 'returned' && (
-                          <span className="px-2 py-0.5 bg-zinc-100 text-zinc-500 text-[10px] font-black uppercase tracking-widest rounded-md">Returned</span>
+                          <span className={`px-2 py-0.5 text-[10px] font-black uppercase tracking-widest rounded-md ${styles.secondary}`}>Returned</span>
                         )}
                       </div>
                       <p className="text-zinc-500 text-sm">{rental.client_phone_number || rental.client_phone}</p>
@@ -1369,7 +1491,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                     {rental.status === 'active' && (
                       <button 
                         onClick={() => onReturn(rental.id)}
-                        className="flex-1 px-6 py-3 bg-zinc-900 hover:bg-black text-white rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2"
+                        className={`flex-1 px-6 py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${styles.button}`}
                       >
                         <Check size={16} />
                         Return
@@ -1377,7 +1499,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                     )}
                     <button 
                       onClick={() => handleEditRental(rental)}
-                      className="flex-1 px-6 py-3 bg-zinc-100 text-zinc-900 hover:bg-zinc-200 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2"
+                      className={`flex-1 px-6 py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${styles.secondary}`}
                       title="Edit Record"
                     >
                       <Settings size={16} />
@@ -1395,7 +1517,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                 </div>
               ))}
               {rentals.filter(r => rentalFilter === "all" || r.status === "active").length === 0 && (
-                <div className="text-center py-12 bg-zinc-50 rounded-3xl border border-dashed border-zinc-200 text-zinc-400 font-medium">
+                <div className={`text-center py-12 rounded-3xl border border-dashed font-medium ${styles.card} ${styles.accent}`}>
                   No {rentalFilter === 'active' ? 'active' : ''} rentals found.
                 </div>
               )}
@@ -1404,11 +1526,11 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
         )}
         {viewingClientRentals && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-white rounded-3xl p-8 max-w-2xl w-full max-h-[80vh] flex flex-col">
+            <div className={`rounded-3xl p-8 max-w-2xl w-full max-h-[80vh] flex flex-col ${styles.modal}`}>
               <div className="flex justify-between items-center mb-6">
                 <div>
-                  <h3 className="text-xl font-bold">Rented Clothes</h3>
-                  <p className="text-sm text-zinc-500">Total items: {
+                  <h3 className={`text-xl font-bold ${styles.text}`}>Rented Clothes</h3>
+                  <p className={`text-sm ${styles.accent}`}>Total items: {
                     viewingClientRentals.filter(r => {
                       if (rentalMonthFilter === 0) return true;
                       const rentalDate = new Date(r.rental_date);
@@ -1418,7 +1540,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                     }).length
                   }</p>
                 </div>
-                <button onClick={() => setViewingClientRentals(null)} className="p-2 hover:bg-zinc-100 rounded-full">
+                <button onClick={() => setViewingClientRentals(null)} className={`p-2 rounded-full ${styles.secondary}`}>
                   <X size={20} />
                 </button>
               </div>
@@ -1426,7 +1548,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
               <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
                 <button 
                   onClick={() => setRentalMonthFilter(0)}
-                  className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${rentalMonthFilter === 0 ? 'bg-black text-white' : 'bg-zinc-100 text-zinc-600'}`}
+                  className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${rentalMonthFilter === 0 ? styles.button : `${styles.secondary} border-transparent`}`}
                 >
                   All Time
                 </button>
@@ -1434,7 +1556,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                   <button 
                     key={m}
                     onClick={() => setRentalMonthFilter(m)}
-                    className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${rentalMonthFilter === m ? 'bg-black text-white' : 'bg-zinc-100 text-zinc-600'}`}
+                    className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${rentalMonthFilter === m ? styles.button : `${styles.secondary} border-transparent`}`}
                   >
                     Last {m} {m === 1 ? 'Month' : 'Months'}
                   </button>
@@ -1484,24 +1606,46 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
 export default function AppWrapper() {
   return (
     <ErrorBoundary>
-      <App />
+      <ThemeProvider>
+        <App />
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }
 
-const Logo = ({ size = 80 }: { size?: number }) => (
-  <img 
-    src="https://i.ibb.co/Wp2BQvjv/Elegant-gold-monogram-with-rose-emblem.png" 
-    alt="Şan Closet Studio Logo" 
-    width={size} 
-    height={size} 
-    className="object-contain"
-    referrerPolicy="no-referrer"
-  />
-);
+const Logo = ({ size = 80, withBackground = false }: { size?: number, withBackground?: boolean }) => {
+  if (withBackground) {
+    return (
+      <div 
+        className="bg-rose-950/30 backdrop-blur-md rounded-[2.5rem] flex items-center justify-center shadow-2xl border border-white/10"
+        style={{ width: size, height: size, padding: size * 0.1 }}
+      >
+        <img 
+          src="https://i.ibb.co/Wp2BQvjv/Elegant-gold-monogram-with-rose-emblem.png" 
+          alt="Şan Closet Studio Logo" 
+          className="w-full h-full object-contain"
+          referrerPolicy="no-referrer"
+        />
+      </div>
+    );
+  }
+  
+  return (
+    <img 
+      src="https://i.ibb.co/Wp2BQvjv/Elegant-gold-monogram-with-rose-emblem.png" 
+      alt="Şan Closet Studio Logo" 
+      width={size} 
+      height={size} 
+      className="object-contain"
+      referrerPolicy="no-referrer"
+    />
+  );
+};
 
 function App() {
   const { t } = useTranslation();
+  const { theme } = useTheme();
+  const styles = THEMES[theme];
   const [isAdmin, setIsAdmin] = useState(false);
   const [password, setPassword] = useState("");
   const [showAdminPanel, setShowAdminPanel] = useState(false);
@@ -1544,6 +1688,13 @@ function App() {
   });
 
   const [clientSearch, setClientSearch] = useState("");
+  
+  useEffect(() => {
+    const lastLogin = localStorage.getItem('adminLoginTime');
+    if (lastLogin && Date.now() - parseInt(lastLogin) < 5 * 60 * 1000) {
+      setIsAdmin(true);
+    }
+  }, []);
 
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, (user) => {
@@ -1807,10 +1958,12 @@ function App() {
   const handleLogin = async () => {
     setIsSubmitting(true);
     try {
+      const trimmedPassword = password.trim();
+      console.log("Sending password:", trimmedPassword);
       const response = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ password: trimmedPassword }),
       });
       if (response.ok) {
         setIsAdmin(true);
@@ -1831,6 +1984,8 @@ function App() {
   const handleLogout = async () => {
     try {
       setIsAdmin(false);
+      localStorage.removeItem('adminLoginTime');
+      setShowAdminPanel(false);
       setNotification({ message: "Logged out successfully!", type: "success" });
     } catch (err) {
       setNotification({ message: "Logout failed.", type: "error" });
@@ -1860,13 +2015,18 @@ function App() {
   });
 
   return (
-    <div dir="auto" className="min-h-screen bg-[#F8F8F8] text-zinc-900 font-sans selection:bg-black selection:text-white">
+    <div dir="auto" className={`min-h-screen font-sans selection:bg-black selection:text-white transition-colors duration-300 ${styles.bg} ${styles.text}`}>
       <Navbar 
         isAdmin={isAdmin} 
         onLogout={handleLogout}
         onOpenAdmin={() => {
+          if (isAdmin) {
+            setShowAdminPanel(true);
+            return;
+          }
           const lastLogin = localStorage.getItem('adminLoginTime');
           if (lastLogin && Date.now() - parseInt(lastLogin) < 5 * 60 * 1000) {
+            setIsAdmin(true);
             setShowAdminPanel(true);
           } else {
             setShowLogin(true);
@@ -1879,20 +2039,20 @@ function App() {
         {/* Hero Section */}
         <section className="mb-20 text-center">
           <div className="flex justify-center mb-6">
-            <Logo size={120} />
+            <Logo size={280} withBackground />
           </div>
           <motion.h2 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-4xl md:text-6xl font-black tracking-tighter mb-6"
           >
-            {t('DRESS TO IMPRESS').split(' ').slice(0, 2).join(' ')} <span className="text-zinc-400">{t('DRESS TO IMPRESS').split(' ').slice(2).join(' ')}</span>
+            {t('DRESS TO IMPRESS').split(' ').slice(0, 2).join(' ')} <span className={styles.accent}>{t('DRESS TO IMPRESS').split(' ').slice(2).join(' ')}</span>
           </motion.h2>
           <motion.p 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="text-xl text-zinc-500 max-w-2xl mx-auto"
+            className={`text-xl max-w-2xl mx-auto ${styles.accent}`}
           >
             Şan Closet Studio: {t('Your ultimate wardrobe management system. Organize your clothes, create collections for events, and always look your best.')}
           </motion.p>
@@ -1921,9 +2081,9 @@ function App() {
                   key={col.id}
                   whileHover={{ y: -5 }}
                   onClick={() => handleCollectionClick(col)}
-                  className="min-w-[300px] md:min-w-[400px] bg-white p-8 rounded-[2rem] border border-zinc-200 snap-start cursor-pointer hover:shadow-xl transition-all"
+                  className={`min-w-[300px] md:min-w-[400px] p-8 rounded-[2rem] border snap-start cursor-pointer hover:shadow-xl transition-all ${styles.card}`}
                 >
-                  <div className="w-12 h-12 bg-zinc-100 rounded-2xl flex items-center justify-center mb-6">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-6 ${styles.secondary}`}>
                     <Calendar className="text-zinc-900" size={24} />
                   </div>
                   <h4 className="text-2xl font-bold mb-2">{col.name}</h4>
@@ -1934,7 +2094,7 @@ function App() {
                     </span>
                     <div className="flex -space-x-3">
                       {[1,2,3].map(i => (
-                        <div key={i} className="w-10 h-10 rounded-full border-2 border-white bg-zinc-100 overflow-hidden">
+                        <div key={i} className={`w-10 h-10 rounded-full border-2 border-white overflow-hidden ${styles.secondary}`}>
                           <img src={`https://picsum.photos/seed/${col.id + i}/100/100`} alt="preview" referrerPolicy="no-referrer" />
                         </div>
                       ))}
@@ -1968,9 +2128,9 @@ function App() {
                 <motion.div 
                   key={rental.id}
                   layout
-                  className="bg-white p-4 rounded-3xl border border-zinc-200 flex items-center gap-4"
+                  className={`p-4 rounded-3xl border flex items-center gap-4 ${styles.card}`}
                 >
-                  <div className="w-20 h-20 rounded-2xl overflow-hidden bg-zinc-100 flex-shrink-0">
+                  <div className={`w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 ${styles.secondary}`}>
                     <img src={rental.image_url} alt={rental.clothing_name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -2005,10 +2165,10 @@ function App() {
                   placeholder="Search by name, type, size, or color..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 bg-white border border-zinc-200 rounded-2xl outline-none focus:ring-2 focus:ring-black transition-all"
+                  className={`w-full pl-12 pr-4 py-3 rounded-2xl outline-none focus:ring-2 focus:ring-black transition-all border ${styles.input}`}
                 />
               </div>
-              <div className="flex items-center gap-2 px-4 py-3 bg-white border border-zinc-200 rounded-2xl">
+              <div className={`flex items-center gap-2 px-4 py-3 rounded-2xl border ${styles.input}`}>
                 <Filter size={18} className="text-zinc-400" />
                 <select 
                   value={filterType}
@@ -2019,7 +2179,7 @@ function App() {
                   {CLOTHING_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
-              <div className="flex items-center gap-2 px-4 py-3 bg-white border border-zinc-200 rounded-2xl">
+              <div className={`flex items-center gap-2 px-4 py-3 rounded-2xl border ${styles.input}`}>
                 <Check size={18} className="text-zinc-400" />
                 <select 
                   value={availabilityFilter}
@@ -2035,12 +2195,12 @@ function App() {
           </div>
 
           {filteredClothes.length === 0 ? (
-            <div className="text-center py-24 bg-white rounded-[3rem] border border-zinc-200">
-              <div className="w-20 h-20 bg-zinc-50 rounded-full flex items-center justify-center mx-auto mb-6">
+            <div className={`text-center py-24 rounded-[3rem] border ${styles.card}`}>
+              <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 ${styles.secondary}`}>
                 <Search size={32} className="text-zinc-300" />
               </div>
-              <h4 className="text-xl font-bold text-zinc-900">No items found</h4>
-              <p className="text-zinc-500 mt-2">Try adjusting your search or filters.</p>
+              <h4 className={`text-xl font-bold ${styles.text}`}>No items found</h4>
+              <p className={`mt-2 ${styles.accent}`}>Try adjusting your search or filters.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
@@ -2072,20 +2232,20 @@ function App() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white w-full max-w-lg rounded-[2.5rem] p-10 shadow-2xl"
+              className={`w-full max-w-lg rounded-[2.5rem] p-10 shadow-2xl ${styles.modal}`}
             >
               <div className="flex justify-between items-start mb-8">
                 <div>
                   <h2 className="text-3xl font-black tracking-tighter">Rent Item</h2>
                   <p className="text-zinc-500 mt-2">Renting: <span className="font-bold text-black">{rentalModal.clothingName}</span></p>
                 </div>
-                <button onClick={() => setRentalModal({ ...rentalModal, show: false })} className="p-2 bg-zinc-100 rounded-full hover:bg-zinc-200 transition-all">
+                <button onClick={() => setRentalModal({ ...rentalModal, show: false })} className={`p-2 rounded-full transition-all ${styles.secondary}`}>
                   <X size={20} />
                 </button>
               </div>
 
               <form onSubmit={handleRentSubmit} className="space-y-6">
-                <div className="bg-zinc-50 p-6 rounded-3xl border border-zinc-200">
+                <div className={`p-6 rounded-3xl border ${styles.card}`}>
                   <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-4">Select Client Account</label>
                   
                   <div className="relative mb-4">
@@ -2095,7 +2255,7 @@ function App() {
                       placeholder="Search saved clients..."
                       value={clientSearch}
                       onChange={e => setClientSearch(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 bg-white border border-zinc-200 rounded-xl outline-none focus:ring-2 focus:ring-black transition-all"
+                      className={`w-full pl-10 pr-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-black transition-all border ${styles.input}`}
                     />
                   </div>
 
@@ -2109,8 +2269,8 @@ function App() {
                         onClick={() => setRentalForm({ ...rentalForm, client_id: client.id, client_name: client.full_name, client_phone: client.phone })}
                         className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${
                           rentalForm.client_id === client.id 
-                            ? "border-black bg-black text-white" 
-                            : "border-zinc-100 bg-white hover:border-zinc-300"
+                            ? styles.button 
+                            : `${styles.secondary} border-transparent`
                         }`}
                       >
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center ${rentalForm.client_id === client.id ? "bg-white/20" : "bg-zinc-100 text-zinc-400"}`}>
@@ -2139,7 +2299,7 @@ function App() {
                       onChange={e => {
                         setRentalForm({ ...rentalForm, size: e.target.value });
                       }}
-                      className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl outline-none"
+                      className={`w-full px-4 py-3 rounded-xl outline-none border ${styles.input}`}
                     >
                       {getAvailableSizes(rentalModal.clothingId!, rentalForm.color).map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
@@ -2149,7 +2309,7 @@ function App() {
                 <button 
                   type="submit"
                   disabled={isSubmitting}
-                  className={`w-full py-4 bg-black text-white rounded-2xl font-black uppercase tracking-widest hover:bg-zinc-800 transition-all shadow-xl flex items-center justify-center gap-2 ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest transition-all shadow-xl flex items-center justify-center gap-2 ${styles.button} ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   {isSubmitting ? (
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -2175,14 +2335,14 @@ function App() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white w-full max-w-md rounded-[2.5rem] p-10 shadow-2xl"
+              className={`w-full max-w-md rounded-[2.5rem] p-10 shadow-2xl ${styles.modal}`}
             >
               <div className="flex justify-between items-start mb-8">
                 <div>
                   <h2 className="text-3xl font-black tracking-tighter">Add to Collection</h2>
                   <p className="text-zinc-500 mt-2">Select a collection to add this item to.</p>
                 </div>
-                <button onClick={() => setAddToCollectionModal({ show: false, clothingId: null })} className="p-2 bg-zinc-100 rounded-full hover:bg-zinc-200 transition-all">
+                <button onClick={() => setAddToCollectionModal({ show: false, clothingId: null })} className={`p-2 rounded-full transition-all ${styles.secondary}`}>
                   <X size={20} />
                 </button>
               </div>
@@ -2212,7 +2372,7 @@ function App() {
                           setNotification({ message: err.message || "Failed to add to collection.", type: "error" });
                         }
                       }}
-                      className="w-full text-left p-4 rounded-2xl border border-zinc-200 hover:border-black hover:shadow-md transition-all group"
+                      className={`w-full text-left p-4 rounded-2xl border transition-all group ${styles.card} hover:border-black hover:shadow-md`}
                     >
                       <h4 className="font-bold text-lg group-hover:text-black">{col.name}</h4>
                       <p className="text-zinc-500 text-sm line-clamp-1">{col.description}</p>
@@ -2240,20 +2400,20 @@ function App() {
               animate={{ scale: 1, y: 0, opacity: 1 }}
               exit={{ scale: 0.95, y: 20, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-[2.5rem] p-10 shadow-2xl"
+              className={`w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-[2.5rem] p-10 shadow-2xl ${styles.modal}`}
             >
               <div className="flex justify-between items-center mb-8">
                 <div>
-                  <h2 className="text-4xl font-black tracking-tighter">
+                  <h2 className={`text-4xl font-black tracking-tighter ${styles.text}`}>
                     {collections.find(c => c.id === selectedCollection)?.name}
                   </h2>
-                  <p className="text-zinc-500 mt-2 text-lg">
+                  <p className={`mt-2 text-lg ${styles.accent}`}>
                     {collections.find(c => c.id === selectedCollection)?.description}
                   </p>
                 </div>
                 <button 
                   onClick={() => setShowCollectionModal(false)}
-                  className="w-12 h-12 bg-zinc-100 rounded-full flex items-center justify-center hover:bg-zinc-200 transition-colors"
+                  className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${styles.secondary}`}
                 >
                   <X size={24} />
                 </button>
@@ -2269,16 +2429,16 @@ function App() {
                     <motion.div 
                       key={item.id}
                       whileHover={{ y: -5 }}
-                      className="bg-white rounded-[2rem] border border-zinc-200 overflow-hidden group hover:shadow-xl transition-all"
+                      className={`rounded-[2rem] border overflow-hidden group hover:shadow-xl transition-all ${styles.card}`}
                     >
-                      <div className="aspect-[4/5] bg-zinc-100 relative overflow-hidden">
+                      <div className={`aspect-[4/5] relative overflow-hidden ${styles.secondary}`}>
                         <img 
                           src={item.image_url || `https://picsum.photos/seed/${item.id}/400/500`} 
                           alt={item.name}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                           referrerPolicy="no-referrer"
                         />
-                        <div className="absolute top-4 right-4 bg-white/90 backdrop-blur px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest">
+                        <div className={`absolute top-4 right-4 backdrop-blur px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest ${styles.secondary}`}>
                           {item.type}
                         </div>
                       </div>
@@ -2290,7 +2450,7 @@ function App() {
                         
                         <div className="flex flex-wrap gap-2 mb-6">
                           {item.sizes.map(size => (
-                            <span key={size} className="px-2 py-1 bg-zinc-100 rounded-md text-xs font-medium text-zinc-600">
+                            <span key={size} className={`px-2 py-1 rounded-md text-xs font-medium ${styles.secondary}`}>
                               {size}
                             </span>
                           ))}
@@ -2302,7 +2462,7 @@ function App() {
                               setShowCollectionModal(false);
                               handleRentClick(item);
                             }}
-                            className="w-full py-3 bg-black text-white rounded-xl font-bold uppercase tracking-widest text-sm hover:bg-zinc-800 transition-colors"
+                            className={`w-full py-3 rounded-xl font-bold uppercase tracking-widest text-sm transition-colors ${styles.button}`}
                           >
                             Rent Now
                           </button>
@@ -2348,14 +2508,14 @@ function App() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white w-full max-w-md rounded-[2.5rem] p-10 shadow-2xl"
+              className={`w-full max-w-md rounded-[2.5rem] p-10 shadow-2xl ${styles.modal} ${styles.text}`}
             >
               <div className="text-center mb-8">
                 <div className="mb-6 flex justify-center">
                   <Logo size={64} />
                 </div>
-                <h2 className="text-3xl font-black tracking-tighter">{t('Admin Access')}</h2>
-                <p className="text-zinc-500 mt-2">{t('Enter admin password to manage the dressing room.')}</p>
+                <h2 className={`text-3xl font-black tracking-tighter ${styles.text}`}>{t('Admin Access')}</h2>
+                <p className={`mt-2 ${styles.accent}`}>{t('Enter admin password to manage the dressing room.')}</p>
               </div>
               
               <div className="space-y-6">
@@ -2364,12 +2524,12 @@ function App() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter password"
-                  className="w-full py-4 px-6 bg-zinc-100 rounded-2xl font-bold text-zinc-900 focus:outline-none focus:ring-2 focus:ring-black transition-all"
+                  className={`w-full py-4 px-6 rounded-2xl font-bold focus:outline-none focus:ring-2 focus:ring-black transition-all border ${styles.input}`}
                 />
                 <button 
                   onClick={handleLogin}
                   disabled={isSubmitting}
-                  className={`w-full py-4 bg-black text-white rounded-2xl font-black uppercase tracking-widest hover:bg-zinc-800 transition-all shadow-lg flex items-center justify-center gap-3 ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest transition-all shadow-lg flex items-center justify-center gap-3 ${styles.button} ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   {isSubmitting ? (
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -2379,7 +2539,7 @@ function App() {
                 </button>
                 <button 
                   onClick={() => setShowLogin(false)}
-                  className="w-full py-4 bg-zinc-100 hover:bg-zinc-200 text-zinc-600 rounded-2xl font-bold transition-all"
+                  className={`w-full py-4 rounded-2xl font-bold transition-all ${styles.secondary}`}
                 >
                   Cancel
                 </button>
@@ -2419,20 +2579,20 @@ function App() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl border border-zinc-100"
+              className={`w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl border ${styles.modal} ${theme === 'dark' ? 'border-zinc-800' : 'border-zinc-100'}`}
             >
-              <h3 className="text-2xl font-black tracking-tight mb-2">{confirmModal.title}</h3>
-              <p className="text-zinc-500 mb-8">{confirmModal.message}</p>
+              <h3 className={`text-2xl font-black tracking-tight mb-2 ${styles.text}`}>{confirmModal.title}</h3>
+              <p className={`mb-8 ${styles.accent}`}>{confirmModal.message}</p>
               <div className="flex gap-3">
                 <button 
                   onClick={() => setConfirmModal(null)}
-                  className="flex-1 py-4 bg-zinc-100 hover:bg-zinc-200 text-zinc-900 rounded-2xl font-bold transition-all"
+                  className={`flex-1 py-4 rounded-2xl font-bold transition-all ${styles.secondary}`}
                 >
                   Cancel
                 </button>
                 <button 
                   onClick={confirmModal.onConfirm}
-                  className="flex-1 py-4 bg-black hover:bg-zinc-800 text-white rounded-2xl font-bold transition-all"
+                  className={`flex-1 py-4 rounded-2xl font-bold transition-all ${styles.button}`}
                 >
                   Confirm
                 </button>

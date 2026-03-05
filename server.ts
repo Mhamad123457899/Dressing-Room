@@ -188,8 +188,14 @@ if (clothesCount.count === 0) {
 }
 
 async function startServer() {
+  console.log("Starting server...");
   const app = express();
   const PORT = 3000;
+
+  app.use((req, res, next) => {
+    console.log(`Request: ${req.method} ${req.url}`);
+    next();
+  });
 
   app.use(express.json());
 
@@ -199,7 +205,16 @@ async function startServer() {
   // API Routes
   app.post("/api/login", (req, res) => {
     const { password } = req.body;
-    if (password === ADMIN_PASSWORD) {
+    console.log(`Login attempt with: '${password}' Expected: '${ADMIN_PASSWORD}'`);
+    
+    if (!password) {
+      return res.status(400).json({ success: false, message: "Password is required" });
+    }
+
+    const normalizedInput = password.trim();
+    const normalizedAdmin = ADMIN_PASSWORD.trim();
+
+    if (normalizedInput === normalizedAdmin) {
       res.json({ success: true, token: "fake-jwt-token" });
     } else {
       res.status(401).json({ success: false, message: "Invalid password" });
