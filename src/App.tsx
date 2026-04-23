@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, Component, ErrorInfo, ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from 'react-i18next';
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
@@ -373,9 +374,19 @@ const Navbar = ({ isAdmin, onOpenAdmin, t, currentCompany, isViewOnly, onLogout,
   activeView: 'closet' | 'production',
   setActiveView: (view: 'closet' | 'production') => void
 }) => {
+  const { i18n } = useTranslation();
   const { theme, setTheme } = useTheme();
   const [showThemeMenu, setShowThemeMenu] = useState(false);
+  const [showLangMenu, setShowLangMenu] = useState(false);
   const styles = THEMES[theme];
+
+  const languages = [
+    { code: 'en', name: 'English' },
+    { code: 'ku', name: 'Kurdî' },
+    { code: 'ar', name: 'العربية' },
+    { code: 'fr', name: 'Français' },
+    { code: 'uk', name: 'Українська' }
+  ];
 
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-md border-b px-2 min-[400px]:px-6 py-4 flex justify-between items-center transition-colors duration-300 ${styles.navbar}`}>
@@ -392,20 +403,56 @@ const Navbar = ({ isAdmin, onOpenAdmin, t, currentCompany, isViewOnly, onLogout,
             onClick={() => setActiveView('closet')}
             className={`px-3 sm:px-4 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-all flex items-center gap-1 sm:gap-2 ${activeView === 'closet' ? styles.button : 'hover:bg-black/5'}`}
           >
-            <History size={14} /> <span className="hidden min-[450px]:inline">Closet</span>
+            <History size={14} /> <span className="hidden min-[450px]:inline">{t('Closet')}</span>
           </button>
           <button 
             onClick={() => setActiveView('production')}
             className={`px-3 sm:px-4 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-all flex items-center gap-1 sm:gap-2 ${activeView === 'production' ? styles.button : 'hover:bg-black/5'}`}
           >
-            <Activity size={14} /> <span className="hidden min-[450px]:inline">Production</span>
+            <Activity size={14} /> <span className="hidden min-[450px]:inline">{t('Production')}</span>
           </button>
         </div>
       </div>
       <div className="flex items-center gap-2 sm:gap-4">
         <div className="relative">
           <button 
-            onClick={() => setShowThemeMenu(!showThemeMenu)}
+            onClick={() => {
+              setShowLangMenu(!showLangMenu);
+              setShowThemeMenu(false);
+            }}
+            className={`p-2 rounded-full transition-colors flex items-center gap-2 ${styles.secondary}`}
+            title="Change Language"
+          >
+            <span className="text-xs font-bold uppercase">{i18n.language.split('-')[0]}</span>
+          </button>
+          
+          {showLangMenu && (
+            <div className={`absolute top-full right-0 mt-2 p-2 rounded-xl shadow-xl border min-w-[150px] ${styles.card} z-50`}>
+              <div className="flex flex-col gap-1">
+                {languages.map((lang) => (
+                  <button
+                    key={lang.code}
+                    onClick={() => {
+                      i18n.changeLanguage(lang.code);
+                      setShowLangMenu(false);
+                    }}
+                    className={`px-3 py-2 rounded-lg text-left text-sm font-medium transition-colors flex items-center justify-between ${i18n.language === lang.code ? styles.button : styles.secondary}`}
+                  >
+                    {lang.name}
+                    {i18n.language === lang.code && <Check size={14} />}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="relative">
+          <button 
+            onClick={() => {
+              setShowThemeMenu(!showThemeMenu);
+              setShowLangMenu(false);
+            }}
             className={`p-2 rounded-full transition-colors ${styles.secondary}`}
             title="Change Theme"
           >
@@ -628,8 +675,9 @@ const ProductionBoard = ({
   currentCompany: Company | null,
   isAdmin: boolean,
   isViewOnly: boolean,
-  setNotification: (n: {message: string, type: 'success' | 'error'}) => void
+  setNotification: (n: {message: string, type: 'success' | 'error' | 'info'}) => void
 }) => {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = THEMES[theme];
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -680,6 +728,9 @@ const ProductionBoard = ({
           updated_at: Timestamp.now()
         });
         setNotification({ message: "Actor updated successfully!", type: "success" });
+        if (selectedActor && selectedActor.id === editingActor.id) {
+          setSelectedActor({ ...editingActor, ...newActor });
+        }
       } else {
         await addDoc(collection(db, "actors"), {
           ...newActor,
@@ -731,7 +782,7 @@ const ProductionBoard = ({
   const exportPDF = async () => {
     if (!selectedProject) return;
     setIsSubmitting(true);
-    setNotification({ message: "Generating PDF report...", type: "info" });
+    setNotification({ message: t("Generating PDF report..."), type: "info" });
 
     try {
       const pdf = new jsPDF('p', 'mm', 'a4');
@@ -760,10 +811,10 @@ const ProductionBoard = ({
       }
 
       pdf.save(`${selectedProject.name}_Production_Report.pdf`);
-      setNotification({ message: "PDF exported successfully!", type: "success" });
+      setNotification({ message: t("PDF exported successfully!"), type: "success" });
     } catch (err) {
       console.error(err);
-      setNotification({ message: "Failed to export PDF.", type: "error" });
+      setNotification({ message: t("Failed to export PDF."), type: "error" });
     } finally {
       setIsSubmitting(false);
     }
@@ -788,20 +839,20 @@ const ProductionBoard = ({
                 <X size={24} />
               </button>
               <div className="min-w-0">
-                <h2 className="text-2xl sm:text-4xl font-black tracking-tighter truncate">Select Items</h2>
-                <p className={`text-[10px] sm:text-sm truncate ${styles.accent}`}>Shot {shotNumber} for {selectedActor.name}</p>
+                <h2 className="text-2xl sm:text-4xl font-black tracking-tighter truncate">{t('Select Items')}</h2>
+                <p className={`text-[10px] sm:text-sm truncate ${styles.accent}`}>{t('Shot')} {shotNumber} {t('for')} {selectedActor.name}</p>
               </div>
             </div>
 
             <div className="flex items-center gap-4 sm:gap-6 w-full xl:w-auto justify-between xl:justify-end">
               <div className="flex px-4 sm:px-8 py-3 sm:py-4 rounded-2xl sm:rounded-3xl border shadow-sm items-center gap-3 sm:gap-4 flex-1 xl:flex-none justify-center">
                 <div className="text-right">
-                  <p className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest opacity-50">Picked</p>
+                  <p className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest opacity-50">{t('Picked')}</p>
                   <p className="text-lg sm:text-xl font-black text-blue-500">{selectedShotClothingIds.length} / 2</p>
                 </div>
                 <div className="h-8 sm:h-10 w-px bg-zinc-200" />
                 <div className="text-right">
-                  <p className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest opacity-50">Actor</p>
+                  <p className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest opacity-50">{t('Actor')}</p>
                   <p className="text-sm sm:text-xl font-black truncate max-w-[100px] sm:max-w-[150px]">{selectedActor.name}</p>
                 </div>
               </div>
@@ -815,8 +866,8 @@ const ProductionBoard = ({
                 disabled={selectedShotClothingIds.length === 0}
                 className={`flex-1 xl:flex-none px-6 sm:px-10 py-4 sm:py-5 rounded-[1.5rem] sm:rounded-[2rem] font-black uppercase tracking-widest text-[10px] sm:text-sm shadow-xl flex items-center justify-center gap-3 transition-all active:scale-95 ${styles.button} ${selectedShotClothingIds.length === 0 ? 'opacity-50 grayscale cursor-not-allowed' : 'hover:scale-105 shadow-blue-500/30'}`}
               >
-                <span className="hidden sm:inline">Confirm Selection</span>
-                <span className="sm:hidden">Confirm</span>
+                <span className="hidden sm:inline">{t('Confirm Selection')}</span>
+                <span className="sm:hidden">{t('Confirm')}</span>
               </button>
             </div>
           </div>
@@ -851,7 +902,7 @@ const ProductionBoard = ({
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-6">
                     <div className="flex justify-between items-end gap-2 text-white">
                       <div className="min-w-0">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1">{item.type || 'Piece'}</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1">{t(item.type || 'Piece')}</p>
                         <p className="text-xl font-bold truncate tracking-tight">{item.name || 'Untitled'}</p>
                         <div className="flex gap-1 mt-2">
                           {(item.sizes || []).map(sz => (
@@ -881,12 +932,12 @@ const ProductionBoard = ({
 
     return (
       <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
-        <div className={`sticky top-[80px] z-30 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 py-8 -mx-6 px-6 border-b transition-all ${styles.bg} backdrop-blur-md`}>
+        <div className={`flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 py-8 -mx-6 px-6 border-b transition-all ${styles.bg}`}>
           <button 
             onClick={() => setSelectedActor(null)}
             className={`flex items-center gap-2 font-black uppercase tracking-widest text-xs ${styles.accent}`}
           >
-            <ChevronRight className="rotate-180" size={16} /> Back to Project List
+            <ChevronRight className="rotate-180" size={16} /> {t('Back to Project List')}
           </button>
           
           <div className="flex items-center gap-4">
@@ -895,7 +946,7 @@ const ProductionBoard = ({
                 onClick={() => handleEditActor(selectedActor)}
                 className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-xs border ${styles.secondary}`}
               >
-                <Settings size={14} /> Edit Actor Info
+                <Settings size={14} /> {t('Edit Actor Info')}
               </button>
             )}
           </div>
@@ -912,19 +963,19 @@ const ProductionBoard = ({
               
               <div className="space-y-4">
                 <div className="flex justify-between items-center py-3 border-b group">
-                  <span className={`text-[10px] font-black uppercase tracking-widest opacity-50`}>Weight</span>
+                  <span className={`text-[10px] font-black uppercase tracking-widest opacity-50`}>{t('Weight')}</span>
                   <span className="font-bold">{selectedActor.weight} kg</span>
                 </div>
                 <div className="flex justify-between items-center py-3 border-b">
-                  <span className={`text-[10px] font-black uppercase tracking-widest opacity-50`}>Height</span>
+                  <span className={`text-[10px] font-black uppercase tracking-widest opacity-50`}>{t('Height')}</span>
                   <span className="font-bold">{selectedActor.height} cm</span>
                 </div>
                 <div className="flex justify-between items-center py-3 border-b">
-                  <span className={`text-[10px] font-black uppercase tracking-widest opacity-50`}>Shoulder</span>
+                  <span className={`text-[10px] font-black uppercase tracking-widest opacity-50`}>{t('Shoulder')}</span>
                   <span className="font-bold">{selectedActor.shoulder_size} cm</span>
                 </div>
                 <div className="flex justify-between items-center py-3 border-b">
-                  <span className={`text-[10px] font-black uppercase tracking-widest opacity-50`}>Waist</span>
+                  <span className={`text-[10px] font-black uppercase tracking-widest opacity-50`}>{t('Waist')}</span>
                   <span className="font-bold">{selectedActor.waist_size} cm</span>
                 </div>
               </div>
@@ -934,7 +985,7 @@ const ProductionBoard = ({
           {/* Actor Shots */}
           <div className="lg:col-span-3 space-y-8">
             <div className="flex justify-between items-center">
-              <h3 className="text-2xl font-black tracking-tighter">Production Shots</h3>
+              <h3 className="text-2xl font-black tracking-tighter">{t('Production Shots')}</h3>
               {!isViewOnly && (
                 <button 
                   onClick={() => {
@@ -943,7 +994,7 @@ const ProductionBoard = ({
                   }}
                   className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-xs ${styles.button}`}
                 >
-                  <Plus size={16} /> Add New Shot
+                  <Plus size={16} /> {t('Add New Shot')}
                 </button>
               )}
             </div>
@@ -992,6 +1043,42 @@ const ProductionBoard = ({
             </div>
           </div>
         </div>
+
+        {/* Add/Edit Actor Modal for Actor detail view */}
+        {showAddActor && createPortal(
+          <div className="fixed inset-0 z-[300] flex items-center justify-center p-6 bg-black/50 backdrop-blur-sm">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className={`w-full max-w-lg p-10 rounded-[3rem] shadow-2xl border ${styles.modal} ${styles.border}`}
+            >
+              <div className="flex justify-between items-center mb-8">
+                <h3 className="text-2xl font-black tracking-tighter">{editingActor ? t('Edit Actor') : t('New Actor')}</h3>
+                <button onClick={() => {
+                  setShowAddActor(false);
+                  setEditingActor(null);
+                  setNewActor({ name: "", weight: "", height: "", shoulder_size: "", waist_size: "" });
+                }} className={`p-2 rounded-full ${styles.secondary}`}><X size={20} /></button>
+              </div>
+              <form onSubmit={handleAddActor} className="space-y-6">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">{t('Full Name')}</label>
+                  <input required value={newActor.name} onChange={e => setNewActor({...newActor, name: e.target.value})} className={`w-full p-4 rounded-2xl border ${styles.input}`} placeholder={t('Actor Name')} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div><label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">{t('Weight (kg)')}</label><input value={newActor.weight} onChange={e => setNewActor({...newActor, weight: e.target.value})} className={`w-full p-4 rounded-2xl border ${styles.input}`} /></div>
+                  <div><label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">{t('Height (cm)')}</label><input value={newActor.height} onChange={e => setNewActor({...newActor, height: e.target.value})} className={`w-full p-4 rounded-2xl border ${styles.input}`} /></div>
+                  <div><label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">{t('Shoulder Size')}</label><input value={newActor.shoulder_size} onChange={e => setNewActor({...newActor, shoulder_size: e.target.value})} className={`w-full p-4 rounded-2xl border ${styles.input}`} /></div>
+                  <div><label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">{t('Waist Size')}</label><input value={newActor.waist_size} onChange={e => setNewActor({...newActor, waist_size: e.target.value})} className={`w-full p-4 rounded-2xl border ${styles.input}`} /></div>
+                </div>
+                <button type="submit" disabled={isSubmitting} className={`w-full py-5 rounded-[2rem] font-black uppercase tracking-widest text-sm shadow-2xl transition-all active:scale-95 ${styles.button} hover:shadow-blue-500/20`}>
+                  {t('Confirm Actor')}
+                </button>
+              </form>
+            </motion.div>
+          </div>,
+          document.body
+        )}
       </div>
     );
   }
@@ -1001,12 +1088,12 @@ const ProductionBoard = ({
     
     return (
       <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
-        <div className={`sticky top-[80px] z-30 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 py-8 -mx-6 px-6 border-b transition-all ${styles.bg} backdrop-blur-md`}>
+        <div className={`flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 py-8 -mx-6 px-6 border-b transition-all ${styles.bg}`}>
           <button 
             onClick={() => setSelectedProject(null)}
             className={`flex items-center gap-2 font-black uppercase tracking-widest text-xs ${styles.accent}`}
           >
-            <ChevronRight className="rotate-180" size={16} /> Back to Projects
+            <ChevronRight className="rotate-180" size={16} /> {t('Back to Projects')}
           </button>
           
           <div className="flex flex-col sm:flex-row gap-4">
@@ -1015,7 +1102,7 @@ const ProductionBoard = ({
                 onClick={() => setShowAddActor(true)}
                 className={`flex items-center justify-center gap-3 px-8 py-4 rounded-3xl font-black uppercase tracking-widest text-sm shadow-xl transition-all active:scale-95 ${styles.button} hover:shadow-blue-500/20`}
               >
-                <Plus size={20} /> Add Actor
+                <Plus size={20} /> {t('Add Actor')}
               </button>
             )}
             <button 
@@ -1023,7 +1110,7 @@ const ProductionBoard = ({
               disabled={isSubmitting}
               className={`flex items-center justify-center gap-3 px-8 py-4 rounded-3xl font-black uppercase tracking-widest text-sm bg-zinc-900 text-white hover:bg-black transition-all shadow-xl active:scale-95 ${isSubmitting ? 'opacity-50' : ''}`}
             >
-              <Download size={20} /> {isSubmitting ? 'Generating...' : 'Export PDF'}
+              <Download size={20} /> {isSubmitting ? t('Generating...') : t('Export PDF')}
             </button>
           </div>
         </div>
@@ -1060,8 +1147,8 @@ const ProductionBoard = ({
               <div className={`w-16 h-16 rounded-3xl flex items-center justify-center mb-6 ${styles.secondary}`}>
                 <Plus size={32} className="opacity-20 group-hover:opacity-100 transition-opacity" />
               </div>
-              <p className="font-bold opacity-30">No actors yet</p>
-              <p className="text-[10px] opacity-20 uppercase font-black tracking-widest mt-2">Tap to add your first actress</p>
+              <p className="font-bold opacity-30">{t('No actors yet')}</p>
+              <p className="text-[10px] opacity-20 uppercase font-black tracking-widest mt-2">{t('Tap to add your first actor')}</p>
             </div>
           )}
         </div>
@@ -1074,17 +1161,20 @@ const ProductionBoard = ({
               <div 
                 key={actor.id} 
                 id={`pdf-actor-${actor.id}`}
-                className="bg-white text-zinc-900 p-12 w-[210mm] min-h-[297mm]"
+                className="bg-white text-zinc-900 p-12 w-[210mm] min-h-[297mm] flex flex-col"
               >
                 {/* PDF Header - Project Info */}
                 <div className="border-b-[3px] border-zinc-900 pb-8 mb-10 flex justify-between items-end">
                   <div>
                     <h1 className="text-4xl font-black tracking-tighter uppercase leading-none">{selectedProject.name}</h1>
-                    <p className="text-xs font-bold uppercase tracking-widest text-zinc-400 mt-2">Production Costume Report</p>
+                    <p className="text-xs font-bold uppercase tracking-widest text-zinc-400 mt-2">{t('Production Costume Report')}</p>
+                    {selectedProject.description && (
+                      <p className="text-[10px] text-zinc-500 mt-2 italic max-w-[500px]">{selectedProject.description}</p>
+                    )}
                   </div>
                   <div className="text-right">
                     <p className="text-[10px] font-black uppercase tracking-widest opacity-30">{new Date().toLocaleDateString()}</p>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-500">Page for {actor.name}</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-500">{t('Page for')} {actor.name}</p>
                   </div>
                 </div>
 
@@ -1094,36 +1184,36 @@ const ProductionBoard = ({
                     <h2 className="text-3xl font-black tracking-tighter mb-4">{actor.name}</h2>
                     <div className="grid grid-cols-2 gap-x-8 gap-y-3">
                        <div className="flex justify-between border-b py-1">
-                         <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Weight</span>
+                         <span className="text-[10px] font-black uppercase tracking-widest opacity-40">{t('Weight')}</span>
                          <span className="text-sm font-bold">{actor.weight} kg</span>
                        </div>
                        <div className="flex justify-between border-b py-1">
-                         <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Height</span>
+                         <span className="text-[10px] font-black uppercase tracking-widest opacity-40">{t('Height')}</span>
                          <span className="text-sm font-bold">{actor.height} cm</span>
                        </div>
                        <div className="flex justify-between border-b py-1">
-                         <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Shoulder</span>
+                         <span className="text-[10px] font-black uppercase tracking-widest opacity-40">{t('Shoulder Size')}</span>
                          <span className="text-sm font-bold">{actor.shoulder_size} cm</span>
                        </div>
                        <div className="flex justify-between border-b py-1">
-                         <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Waist</span>
+                         <span className="text-[10px] font-black uppercase tracking-widest opacity-40">{t('Waist Size')}</span>
                          <span className="text-sm font-bold">{actor.waist_size} cm</span>
                        </div>
                     </div>
                   </div>
                   <div className="w-40 aspect-square bg-zinc-100 rounded-2xl flex items-center justify-center border-2 border-zinc-200">
-                    <p className="text-[8px] font-black uppercase tracking-widest opacity-20">Actor Photo</p>
+                    <p className="text-[8px] font-black uppercase tracking-widest opacity-20">{t('Actor Photo')}</p>
                   </div>
                 </div>
 
                 {/* Shots Grid */}
-                <div>
-                   <h3 className="text-sm font-black uppercase tracking-widest mb-6 border-l-4 border-blue-500 pl-4">Selected Shots & Wardrobe</h3>
+                <div className="flex-1">
+                   <h3 className="text-sm font-black uppercase tracking-widest mb-6 border-l-4 border-blue-500 pl-4">{t('Selected Shots & Wardrobe')}</h3>
                    <div className="grid grid-cols-2 gap-8">
                      {actorShots.map(shot => (
                        <div key={shot.id} className="p-6 rounded-3xl bg-zinc-50 border-2 border-zinc-100">
                          <div className="flex justify-between items-center mb-4">
-                           <span className="px-3 py-1 bg-blue-500 text-white rounded-full text-[8px] font-black uppercase tracking-widest">Shot {shot.shot_number}</span>
+                           <span className="px-3 py-1 bg-blue-500 text-white rounded-full text-[8px] font-black uppercase tracking-widest">{t('Shot')} {shot.shot_number}</span>
                          </div>
                          <div className="grid grid-cols-2 gap-4">
                             {shot.clothing_item_ids.map(itemId => {
@@ -1134,7 +1224,7 @@ const ProductionBoard = ({
                                     <img src={item.image_url} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                                   </div>
                                   <div className="px-1">
-                                    <p className="text-[8px] font-black uppercase tracking-widest opacity-40 truncate">{item.type}</p>
+                                    <p className="text-[8px] font-black uppercase tracking-widest opacity-40 truncate">{t(item.type)}</p>
                                     <p className="text-[10px] font-black truncate">{item.name}</p>
                                   </div>
                                 </div>
@@ -1145,7 +1235,7 @@ const ProductionBoard = ({
                      ))}
                      {actorShots.length === 0 && (
                        <div className="col-span-2 py-10 text-center border-2 border-dashed rounded-3xl opacity-30">
-                         <p className="text-xs font-bold font-black uppercase tracking-widest">No shots assigned</p>
+                         <p className="text-xs font-bold font-black uppercase tracking-widest">{t('No shots assigned')}</p>
                        </div>
                      )}
                    </div>
@@ -1153,7 +1243,7 @@ const ProductionBoard = ({
                 
                 {/* Footer */}
                 <div className="mt-auto pt-10 border-t border-zinc-100 text-[8px] font-black uppercase tracking-widest opacity-20 flex justify-between">
-                  <span>Generated via Production Costume Studio</span>
+                  <span>{t('Generated via Production Costume Studio')}</span>
                   <span>© {new Date().getFullYear()} {selectedProject.name}</span>
                 </div>
               </div>
@@ -1162,7 +1252,7 @@ const ProductionBoard = ({
         </div>
 
         {/* Add Actor Modal for Project list view */}
-        {showAddActor && (
+        {showAddActor && createPortal(
           <div className="fixed inset-0 z-[300] flex items-center justify-center p-6 bg-black/50 backdrop-blur-sm">
             <motion.div 
               initial={{ scale: 0.9, opacity: 0 }}
@@ -1170,26 +1260,31 @@ const ProductionBoard = ({
               className={`w-full max-w-lg p-10 rounded-[3rem] shadow-2xl border ${styles.modal} ${styles.border}`}
             >
               <div className="flex justify-between items-center mb-8">
-                <h3 className="text-2xl font-black tracking-tighter">New Actor</h3>
-                <button onClick={() => setShowAddActor(false)} className={`p-2 rounded-full ${styles.secondary}`}><X size={20} /></button>
+                <h3 className="text-2xl font-black tracking-tighter">{editingActor ? t('Edit Actor') : t('New Actor')}</h3>
+                <button onClick={() => {
+                  setShowAddActor(false);
+                  setEditingActor(null);
+                  setNewActor({ name: "", weight: "", height: "", shoulder_size: "", waist_size: "" });
+                }} className={`p-2 rounded-full ${styles.secondary}`}><X size={20} /></button>
               </div>
               <form onSubmit={handleAddActor} className="space-y-6">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">Full Name</label>
-                  <input required value={newActor.name} onChange={e => setNewActor({...newActor, name: e.target.value})} className={`w-full p-4 rounded-2xl border ${styles.input}`} placeholder="Actor Name" />
+                  <label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">{t('Full Name')}</label>
+                  <input required value={newActor.name} onChange={e => setNewActor({...newActor, name: e.target.value})} className={`w-full p-4 rounded-2xl border ${styles.input}`} placeholder={t('Actor Name')} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div><label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">Weight (kg)</label><input value={newActor.weight} onChange={e => setNewActor({...newActor, weight: e.target.value})} className={`w-full p-4 rounded-2xl border ${styles.input}`} /></div>
-                  <div><label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">Height (cm)</label><input value={newActor.height} onChange={e => setNewActor({...newActor, height: e.target.value})} className={`w-full p-4 rounded-2xl border ${styles.input}`} /></div>
-                  <div><label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">Shoulder Size</label><input value={newActor.shoulder_size} onChange={e => setNewActor({...newActor, shoulder_size: e.target.value})} className={`w-full p-4 rounded-2xl border ${styles.input}`} /></div>
-                  <div><label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">Waist Size</label><input value={newActor.waist_size} onChange={e => setNewActor({...newActor, waist_size: e.target.value})} className={`w-full p-4 rounded-2xl border ${styles.input}`} /></div>
+                  <div><label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">{t('Weight (kg)')}</label><input value={newActor.weight} onChange={e => setNewActor({...newActor, weight: e.target.value})} className={`w-full p-4 rounded-2xl border ${styles.input}`} /></div>
+                  <div><label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">{t('Height (cm)')}</label><input value={newActor.height} onChange={e => setNewActor({...newActor, height: e.target.value})} className={`w-full p-4 rounded-2xl border ${styles.input}`} /></div>
+                  <div><label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">{t('Shoulder Size')}</label><input value={newActor.shoulder_size} onChange={e => setNewActor({...newActor, shoulder_size: e.target.value})} className={`w-full p-4 rounded-2xl border ${styles.input}`} /></div>
+                  <div><label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">{t('Waist Size')}</label><input value={newActor.waist_size} onChange={e => setNewActor({...newActor, waist_size: e.target.value})} className={`w-full p-4 rounded-2xl border ${styles.input}`} /></div>
                 </div>
                 <button type="submit" disabled={isSubmitting} className={`w-full py-5 rounded-[2rem] font-black uppercase tracking-widest text-sm shadow-2xl transition-all active:scale-95 ${styles.button} hover:shadow-blue-500/20`}>
-                  Confirm Actor
+                  {t('Confirm Actor')}
                 </button>
               </form>
             </motion.div>
-          </div>
+          </div>,
+          document.body
         )}
       </div>
     );
@@ -1197,17 +1292,17 @@ const ProductionBoard = ({
 
   return (
     <div className="space-y-12">
-      <div className={`sticky top-[80px] z-30 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-8 py-6 -mx-6 px-6 border-b transition-all ${styles.bg} backdrop-blur-md`}>
+      <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-8 py-6 -mx-6 px-6 border-b transition-all ${styles.bg}`}>
         <div>
-          <h2 className="text-3xl md:text-4xl font-black tracking-tighter">Production Board</h2>
-          <p className={styles.accent}>Manage costume planning for film and TV projects.</p>
+          <h2 className="text-3xl md:text-4xl font-black tracking-tighter">{t('Production Board')}</h2>
+          <p className={styles.accent}>{t('Manage costume planning for film and TV projects.')}</p>
         </div>
         {!isViewOnly && (
           <button 
             onClick={() => setShowAddProject(true)}
             className={`w-full sm:w-auto flex items-center justify-center gap-3 px-10 py-5 rounded-[2rem] font-black uppercase tracking-widest text-sm shadow-2xl transition-all active:scale-95 ${styles.button} hover:shadow-blue-500/20`}
           >
-            <Plus size={24} /> New Production
+            <Plus size={24} /> {t('New Production')}
           </button>
         )}
       </div>
@@ -1228,7 +1323,7 @@ const ProductionBoard = ({
             <div className="flex justify-between items-center pt-8 border-t">
               <span className={`text-[10px] font-black uppercase tracking-widest opacity-50`}>{new Date(project.created_at?.toDate()).toLocaleDateString()}</span>
               <div className="flex items-center gap-1 font-bold text-sm">
-                <User size={14} /> {actors.filter(a => a.project_id === project.id).length} Actors
+                <User size={14} /> {actors.filter(a => a.project_id === project.id).length} {t('Actors')}
               </div>
             </div>
           </motion.div>
@@ -1243,20 +1338,20 @@ const ProductionBoard = ({
             className={`w-full max-w-lg p-10 rounded-[3rem] shadow-2xl border ${styles.modal} ${styles.border}`}
           >
             <div className="flex justify-between items-center mb-8">
-              <h3 className="text-2xl font-black tracking-tighter">Create New Project</h3>
+              <h3 className="text-2xl font-black tracking-tighter">{t('Create New Project')}</h3>
               <button onClick={() => setShowAddProject(false)} className={`p-2 rounded-full ${styles.secondary}`}><X size={20} /></button>
             </div>
             <form onSubmit={handleCreateProject} className="space-y-6">
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">Project Name</label>
+                <label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">{t('Project Name')}</label>
                 <input required value={newProject.name} onChange={e => setNewProject({...newProject, name: e.target.value})} className={`w-full p-4 rounded-2xl border ${styles.input}`} placeholder="e.g. Summer Film Shoot" />
               </div>
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">Description</label>
+                <label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">{t('Description')}</label>
                 <textarea value={newProject.description} onChange={e => setNewProject({...newProject, description: e.target.value})} className={`w-full p-4 rounded-2xl border ${styles.input} h-32`} placeholder="Project details..." />
               </div>
               <button type="submit" disabled={isSubmitting} className={`w-full py-5 rounded-[2rem] font-black uppercase tracking-widest text-sm shadow-2xl transition-all active:scale-95 ${styles.button} hover:shadow-blue-500/20`}>
-                {isSubmitting ? 'Launching...' : 'Confirm Production'}
+                {isSubmitting ? t('Launching...') : t('Confirm Production')}
               </button>
             </form>
           </motion.div>
@@ -2858,7 +2953,8 @@ function App() {
   }, [currentCompany, isAdmin, isViewOnly, isCompanyLoading, currentUser]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
+  const [notification, setNotification] = useState<{message: string, type: 'success' | 'error' | 'info'} | null>(null);
+  const [activeFooterModal, setActiveFooterModal] = useState<'privacy' | 'terms' | 'support' | 'about' | null>(null);
 
   const seedSampleData = async () => {
     setIsSubmitting(true);
@@ -3292,15 +3388,15 @@ function App() {
           <section className="mb-20">
             <div className="flex justify-between items-end mb-8">
               <div>
-                <h3 className="text-2xl font-bold tracking-tight">My Active Rentals</h3>
-                <p className={styles.accent}>Items you currently have rented.</p>
+                <h3 className="text-2xl font-bold tracking-tight">{t('My Active Rentals')}</h3>
+                <p className={styles.accent}>{t('Items you currently have rented.')}</p>
               </div>
               {rentals.filter(r => r.status === 'active').length > 3 && (
                 <button 
                   onClick={() => setShowAllRentals(!showAllRentals)}
                   className={`text-sm font-bold uppercase tracking-widest transition-colors ${styles.muted} hover:opacity-80`}
                 >
-                  {showAllRentals ? 'Show Less' : 'See More'}
+                  {showAllRentals ? t('Show Less') : t('See More')}
                 </button>
               )}
             </div>
@@ -3316,12 +3412,12 @@ function App() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <h4 className="font-bold text-zinc-900 truncate">{rental.clothing_name}</h4>
-                    <p className="text-xs text-zinc-500">Rented on {new Date(rental.rental_date).toLocaleDateString()}</p>
+                    <p className="text-xs text-zinc-500">{t('Rented on ')}{new Date(rental.rental_date).toLocaleDateString()}</p>
                     <button 
                       onClick={() => handleReturn(rental.id)}
                       className="mt-2 text-xs font-bold text-red-500 hover:text-red-600 transition-colors flex items-center gap-1"
                     >
-                      <X size={12} /> Return Item
+                      <X size={12} /> {t('Return Item')}
                     </button>
                   </div>
                 </motion.div>
@@ -3332,10 +3428,10 @@ function App() {
 
         {/* Inventory Section */}
         <section>
-          <div className={`sticky top-[80px] z-30 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12 py-6 transition-all ${styles.bg} border-b -mx-6 px-6 backdrop-blur-md`}>
+          <div className={`flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12 py-6 transition-all ${styles.bg} border-b -mx-6 px-6`}>
             <div>
-              <h3 className="text-2xl font-bold tracking-tight">Wardrobe Inventory</h3>
-              <p className={styles.accent}>Browse and filter your entire clothing collection.</p>
+              <h3 className="text-2xl font-bold tracking-tight">{t('Wardrobe Inventory')}</h3>
+              <p className={styles.accent}>{t('Browse and filter your entire clothing collection.')}</p>
             </div>
             
             <div className="flex flex-wrap gap-4 w-full md:w-auto">
@@ -3343,7 +3439,7 @@ function App() {
                 <Search className={`absolute left-4 top-1/2 -translate-y-1/2 ${styles.muted}`} size={18} />
                 <input 
                   type="text" 
-                  placeholder="Search by name, type, size, or color..."
+                  placeholder={t('Search by name, type, size, or color...')}
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   className={`w-full pl-12 pr-4 py-3 rounded-2xl outline-none focus:ring-2 focus:ring-black transition-all border ${styles.input}`}
@@ -3825,6 +3921,86 @@ function App() {
         )}
       </AnimatePresence>
 
+      {/* Footer Modals */}
+      <AnimatePresence>
+        {activeFooterModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className={`fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6`}
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className={`w-full max-w-2xl max-h-[80vh] overflow-y-auto rounded-[2rem] p-10 shadow-2xl ${styles.modal}`}
+            >
+              <div className="flex justify-between items-center mb-8">
+                <h3 className="text-3xl font-black uppercase tracking-tighter">
+                  {activeFooterModal === 'privacy' && 'Privacy Policy'}
+                  {activeFooterModal === 'terms' && 'Terms of Service'}
+                  {(activeFooterModal === 'support' || activeFooterModal === 'about') && 'About & Support'}
+                </h3>
+                <button 
+                  onClick={() => setActiveFooterModal(null)}
+                  className={`w-12 h-12 rounded-full flex items-center justify-center border transition-all hover:bg-black hover:text-white ${styles.secondary}`}
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="space-y-6 text-sm md:text-base leading-relaxed">
+                {activeFooterModal === 'privacy' && (
+                  <>
+                    <p className="font-bold text-lg mb-2">User Privacy Data Protection</p>
+                    <p>At Şan Closet Studio, securing your privacy is our priority. We collect data necessary to provide you with the functionality of the app, including authentication details, wardrobe and rental records, and project schedules.</p>
+                    <p>All data is strongly protected via industry-standard authentication encryption and strict security rules, ensuring your data is isolated strictly to your company. We do not sell your personal data to third parties.</p>
+                    <p>By using our services, you consent to our practices of maintaining secure cloud records to facilitate your film and TV wardrobe management needs seamlessly.</p>
+                  </>
+                )}
+
+                {activeFooterModal === 'terms' && (
+                  <>
+                    <p className="font-bold text-lg mb-2">Terms of Use</p>
+                    <p>By accessing Şan Closet Studio, you agree to bound by these terms. Our software is provided "as is" to facilitate wardrobe planning.</p>
+                    <p>You agree not to misuse the platform or attempt to bypass security measures. We reserve the right to suspend accounts conducting fraudulent rentals or malicious activities.</p>
+                  </>
+                )}
+
+                {(activeFooterModal === 'support' || activeFooterModal === 'about') && (
+                  <>
+                    <div className="p-6 rounded-2xl border bg-black/5 dark:bg-white/5 space-y-4">
+                      <div className="flex items-center gap-4 mb-6">
+                        <div className="w-16 h-16 rounded-full bg-blue-600 flex items-center justify-center text-white text-2xl font-black shadow-lg">
+                          ML
+                        </div>
+                        <div>
+                          <p className="text-xl font-bold">Miran Luqman Ibrahim</p>
+                          <p className="opacity-60 text-sm font-medium uppercase tracking-widest">Founder & Lead Developer</p>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2 font-medium">
+                        <p><span className="opacity-50">Owner of:</span> Şan Closet Studio</p>
+                        <p><span className="opacity-50">Creation Date:</span> 16/01/2026</p>
+                        <p><span className="opacity-50">Facebook:</span> <a href="https://www.facebook.com/share/1YsTVZ6VHV/" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-600 underline">Miran Luqman Facebook</a></p>
+                      </div>
+
+                      <div className="mt-6 pt-6 border-t opacity-80 italic">
+                        "I created this website by my own hand, and I own the Şan Closet Studio. I am a Developer with a passion to create websites and mobile applications."
+                      </div>
+                    </div>
+
+                    <p className="text-center pt-4 opacity-50 font-medium">For further support, please reach out via the provided social links.</p>
+                  </>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Footer */}
       <footer className={`border-t py-12 px-6 ${styles.border}`}>
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
@@ -3835,9 +4011,9 @@ function App() {
           <LanguageSwitcher />
           <p className={`text-sm ${styles.muted}`}>© 2026 Şan Closet Studio. All rights reserved.</p>
           <div className={`flex gap-6 text-sm font-medium ${styles.muted}`}>
-            <a href="#" className={`transition-colors hover:opacity-80`}>Privacy</a>
-            <a href="#" className={`transition-colors hover:opacity-80`}>Terms</a>
-            <a href="#" className={`transition-colors hover:opacity-80`}>Support</a>
+            <button onClick={() => setActiveFooterModal('privacy')} className={`transition-colors hover:opacity-80`}>Privacy</button>
+            <button onClick={() => setActiveFooterModal('terms')} className={`transition-colors hover:opacity-80`}>Terms</button>
+            <button onClick={() => setActiveFooterModal('support')} className={`transition-colors hover:opacity-80`}>Support & Company</button>
           </div>
         </div>
       </footer>
