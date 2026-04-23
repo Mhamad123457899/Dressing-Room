@@ -90,34 +90,26 @@ service cloud.firestore {
     }
 
     match /clients/{clientId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read, write: if isAuthenticated();
     }
 
     match /rentals/{rentalId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read, write: if isAuthenticated();
     }
 
     match /projects/{projectId} {
       allow read: if true;
-      allow create: if isAuthenticated() && isValidProject(request.resource.data);
-      allow update: if isAuthenticated() && isValidProject(request.resource.data);
-      allow delete: if isAuthenticated();
+      allow create, update, delete: if isAuthenticated();
     }
 
     match /actors/{actorId} {
       allow read: if true;
-      allow create: if isAuthenticated() && isValidActor(request.resource.data);
-      allow update: if isAuthenticated() && isValidActor(request.resource.data);
-      allow delete: if isAuthenticated();
+      allow create, update, delete: if isAuthenticated();
     }
 
     match /shots/{shotId} {
       allow read: if true;
-      allow create: if isAuthenticated() && isValidShot(request.resource.data);
-      allow update: if isAuthenticated() && isValidShot(request.resource.data);
-      allow delete: if isAuthenticated();
+      allow create, update, delete: if isAuthenticated();
     }
     
     match /company_secrets/{secretId} {

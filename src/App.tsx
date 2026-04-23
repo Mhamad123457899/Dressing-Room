@@ -378,31 +378,31 @@ const Navbar = ({ isAdmin, onOpenAdmin, t, currentCompany, isViewOnly, onLogout,
   const styles = THEMES[theme];
 
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-md border-b px-6 py-2 flex justify-between items-center transition-colors duration-300 ${styles.navbar}`}>
-      <div className="flex items-center gap-6">
-        <div className="flex items-center gap-4">
-          <Logo size={40} src={currentCompany?.logo_url} />
-          <h1 className={`text-xl font-bold tracking-tight ${styles.text}`}>
+    <nav className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-md border-b px-2 min-[400px]:px-6 py-4 flex justify-between items-center transition-colors duration-300 ${styles.navbar}`}>
+      <div className="flex items-center gap-2 sm:gap-6">
+        <div className="flex items-center gap-2 sm:gap-4">
+          <Logo size={48} src={currentCompany?.logo_url} />
+          <h1 className={`text-xl font-bold tracking-tight ${styles.text} hidden xl:inline-block`}>
             {currentCompany?.name || 'Şan Closet Studio'}
           </h1>
         </div>
         
-        <div className={`hidden md:flex items-center gap-1 p-1 rounded-xl ${styles.secondary}`}>
+        <div className={`flex items-center gap-1 p-1 rounded-xl ${styles.secondary}`}>
           <button 
             onClick={() => setActiveView('closet')}
-            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${activeView === 'closet' ? styles.button : 'hover:bg-black/5'}`}
+            className={`px-3 sm:px-4 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-all flex items-center gap-1 sm:gap-2 ${activeView === 'closet' ? styles.button : 'hover:bg-black/5'}`}
           >
-            <History size={14} /> Closet
+            <History size={14} /> <span className="hidden min-[450px]:inline">Closet</span>
           </button>
           <button 
             onClick={() => setActiveView('production')}
-            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${activeView === 'production' ? styles.button : 'hover:bg-black/5'}`}
+            className={`px-3 sm:px-4 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-all flex items-center gap-1 sm:gap-2 ${activeView === 'production' ? styles.button : 'hover:bg-black/5'}`}
           >
-            <Activity size={14} /> Production
+            <Activity size={14} /> <span className="hidden min-[450px]:inline">Production</span>
           </button>
         </div>
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 sm:gap-4">
         <div className="relative">
           <button 
             onClick={() => setShowThemeMenu(!showThemeMenu)}
@@ -633,8 +633,10 @@ const ProductionBoard = ({
   const { theme } = useTheme();
   const styles = THEMES[theme];
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [selectedActor, setSelectedActor] = useState<Actor | null>(null);
   const [showAddProject, setShowAddProject] = useState(false);
   const [showAddActor, setShowAddActor] = useState(false);
+  const [editingActor, setEditingActor] = useState<Actor | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const pdfRef = useRef<HTMLDivElement>(null);
 
@@ -643,6 +645,9 @@ const ProductionBoard = ({
     name: "", weight: "", height: "", shoulder_size: "", waist_size: "" 
   });
   const [activeActorId, setActiveActorId] = useState<string | null>(null);
+  const [selectedShotClothingIds, setSelectedShotClothingIds] = useState<string[]>([]);
+  const [shotClothingSearch, setShotClothingSearch] = useState("");
+  const [shotNumber, setShotNumber] = useState(1);
 
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -669,26 +674,46 @@ const ProductionBoard = ({
     if (!selectedProject || !currentCompany) return;
     setIsSubmitting(true);
     try {
-      await addDoc(collection(db, "actors"), {
-        ...newActor,
-        company_id: currentCompany.id,
-        project_id: selectedProject.id,
-        created_at: Timestamp.now()
-      });
+      if (editingActor) {
+        await updateDoc(doc(db, "actors", editingActor.id), {
+          ...newActor,
+          updated_at: Timestamp.now()
+        });
+        setNotification({ message: "Actor updated successfully!", type: "success" });
+      } else {
+        await addDoc(collection(db, "actors"), {
+          ...newActor,
+          company_id: currentCompany.id,
+          project_id: selectedProject.id,
+          created_at: Timestamp.now()
+        });
+        setNotification({ message: "Actor added successfully!", type: "success" });
+      }
       setNewActor({ name: "", weight: "", height: "", shoulder_size: "", waist_size: "" });
       setShowAddActor(false);
-      setNotification({ message: "Actor added successfully!", type: "success" });
+      setEditingActor(null);
     } catch (err) {
-      setNotification({ message: "Failed to add actor.", type: "error" });
+      setNotification({ message: "Failed to save actor.", type: "error" });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleAddShot = async (actorId: string, shotNumber: number, firstItem: string, secondItem: string) => {
+  const handleEditActor = (actor: Actor) => {
+    setNewActor({
+      name: actor.name,
+      weight: actor.weight,
+      height: actor.height,
+      shoulder_size: actor.shoulder_size,
+      waist_size: actor.waist_size
+    });
+    setEditingActor(actor);
+    setShowAddActor(true);
+  };
+
+  const handleAddShot = async (actorId: string, shotNumber: number, itemIds: string[]) => {
     if (!selectedProject || !currentCompany) return;
     try {
-      const itemIds = [firstItem, secondItem].filter(id => id !== "");
       await addDoc(collection(db, "shots"), {
         company_id: currentCompany.id,
         project_id: selectedProject.id,
@@ -704,166 +729,439 @@ const ProductionBoard = ({
   };
 
   const exportPDF = async () => {
-    if (!pdfRef.current) return;
+    if (!selectedProject) return;
     setIsSubmitting(true);
+    setNotification({ message: "Generating PDF report...", type: "info" });
+
     try {
-      const canvas = await html2canvas(pdfRef.current, { scale: 2 });
-      const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
-      const imgWidth = 210;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-      pdf.save(`${selectedProject?.name || 'Production'}_report.pdf`);
+      const projectActors = actors.filter(a => a.project_id === selectedProject.id);
+      
+      for (let i = 0; i < projectActors.length; i++) {
+        const actor = projectActors[i];
+        const element = document.getElementById(`pdf-actor-${actor.id}`);
+        if (!element) continue;
+
+        const canvas = await html2canvas(element, { 
+          scale: 3, 
+          useCORS: true,
+          scrollX: 0,
+          scrollY: 0,
+          windowWidth: document.documentElement.offsetWidth,
+          windowHeight: document.documentElement.offsetHeight
+        });
+        
+        const imgData = canvas.toDataURL('image/png');
+        const imgWidth = 210;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+        if (i > 0) pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+      }
+
+      pdf.save(`${selectedProject.name}_Production_Report.pdf`);
       setNotification({ message: "PDF exported successfully!", type: "success" });
     } catch (err) {
+      console.error(err);
       setNotification({ message: "Failed to export PDF.", type: "error" });
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  if (selectedProject && selectedActor) {
+    const actorShots = shots.filter(s => s.actor_id === selectedActor.id).sort((a,b) => a.shot_number - b.shot_number);
+    
+    // Dedicated Full-Screen "Add Shot" Selection Page
+    if (activeActorId) {
+      return (
+        <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-40">
+          <div className={`sticky top-[80px] z-30 flex flex-col xl:flex-row items-center justify-between gap-6 py-6 -mx-6 px-6 border-b transition-all ${styles.bg} backdrop-blur-md`}>
+            <div className="flex items-center gap-6 w-full xl:w-auto">
+              <button 
+                onClick={() => {
+                  setActiveActorId(null);
+                  setSelectedShotClothingIds([]);
+                }}
+                className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full flex-shrink-0 flex items-center justify-center border shadow-sm transition-all active:scale-95 ${styles.secondary}`}
+              >
+                <X size={24} />
+              </button>
+              <div className="min-w-0">
+                <h2 className="text-2xl sm:text-4xl font-black tracking-tighter truncate">Select Items</h2>
+                <p className={`text-[10px] sm:text-sm truncate ${styles.accent}`}>Shot {shotNumber} for {selectedActor.name}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 sm:gap-6 w-full xl:w-auto justify-between xl:justify-end">
+              <div className="flex px-4 sm:px-8 py-3 sm:py-4 rounded-2xl sm:rounded-3xl border shadow-sm items-center gap-3 sm:gap-4 flex-1 xl:flex-none justify-center">
+                <div className="text-right">
+                  <p className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest opacity-50">Picked</p>
+                  <p className="text-lg sm:text-xl font-black text-blue-500">{selectedShotClothingIds.length} / 2</p>
+                </div>
+                <div className="h-8 sm:h-10 w-px bg-zinc-200" />
+                <div className="text-right">
+                  <p className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest opacity-50">Actor</p>
+                  <p className="text-sm sm:text-xl font-black truncate max-w-[100px] sm:max-w-[150px]">{selectedActor.name}</p>
+                </div>
+              </div>
+
+              <button 
+                onClick={() => {
+                  handleAddShot(selectedActor.id, shotNumber, selectedShotClothingIds);
+                  setActiveActorId(null);
+                  setSelectedShotClothingIds([]);
+                }}
+                disabled={selectedShotClothingIds.length === 0}
+                className={`flex-1 xl:flex-none px-6 sm:px-10 py-4 sm:py-5 rounded-[1.5rem] sm:rounded-[2rem] font-black uppercase tracking-widest text-[10px] sm:text-sm shadow-xl flex items-center justify-center gap-3 transition-all active:scale-95 ${styles.button} ${selectedShotClothingIds.length === 0 ? 'opacity-50 grayscale cursor-not-allowed' : 'hover:scale-105 shadow-blue-500/30'}`}
+              >
+                <span className="hidden sm:inline">Confirm Selection</span>
+                <span className="sm:hidden">Confirm</span>
+              </button>
+            </div>
+          </div>
+
+
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-8">
+            {(clothes || []).map(item => {
+              const isSelected = (selectedShotClothingIds || []).includes(item.id);
+              const canSelect = isSelected || (selectedShotClothingIds || []).length < 2;
+              
+              return (
+                <motion.div 
+                  key={item.id}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  whileHover={{ y: -5 }}
+                  onClick={() => {
+                    if (isSelected) {
+                      setSelectedShotClothingIds(prev => prev.filter(id => id !== item.id));
+                    } else if (canSelect) {
+                      setSelectedShotClothingIds(prev => [...prev, item.id]);
+                    } else {
+                      setNotification({ message: "You can only select up to 2 items per shot", type: "error" });
+                    }
+                  }}
+                  className={`relative rounded-[2.5rem] overflow-hidden cursor-pointer group transition-all border-4 ${isSelected ? 'border-blue-500 shadow-2xl scale-[0.98]' : 'border-transparent shadow-lg hover:shadow-xl'}`}
+                >
+                  <div className="aspect-[3/4] overflow-hidden bg-zinc-100">
+                    <img src={item.image_url} alt={item.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" referrerPolicy="no-referrer" />
+                  </div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-6">
+                    <div className="flex justify-between items-end gap-2 text-white">
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1">{item.type || 'Piece'}</p>
+                        <p className="text-xl font-bold truncate tracking-tight">{item.name || 'Untitled'}</p>
+                        <div className="flex gap-1 mt-2">
+                          {(item.sizes || []).map(sz => (
+                            <span key={sz} className="px-2 py-0.5 bg-white/20 rounded text-[10px] font-black">{sz}</span>
+                          ))}
+                        </div>
+                      </div>
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${isSelected ? 'bg-blue-500 scale-110' : 'bg-white/20 group-hover:bg-white/40'}`}>
+                        {isSelected ? <Check size={20} /> : <Plus size={20} />}
+                      </div>
+                    </div>
+                  </div>
+                  {!canSelect && !isSelected && (
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center">
+                      <div className="bg-white/90 px-4 py-2 rounded-full text-[10px] font-bold text-black uppercase tracking-widest">Limit Reached</div>
+                    </div>
+                  )}
+                </motion.div>
+              );
+            })}
+          </div>
+
+
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
+        <div className={`sticky top-[80px] z-30 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 py-8 -mx-6 px-6 border-b transition-all ${styles.bg} backdrop-blur-md`}>
+          <button 
+            onClick={() => setSelectedActor(null)}
+            className={`flex items-center gap-2 font-black uppercase tracking-widest text-xs ${styles.accent}`}
+          >
+            <ChevronRight className="rotate-180" size={16} /> Back to Project List
+          </button>
+          
+          <div className="flex items-center gap-4">
+            {!isViewOnly && (
+              <button 
+                onClick={() => handleEditActor(selectedActor)}
+                className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-xs border ${styles.secondary}`}
+              >
+                <Settings size={14} /> Edit Actor Info
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-12">
+          {/* Actor Profile Info */}
+          <div className="lg:col-span-1">
+            <div className={`p-8 rounded-[2.5rem] border sticky top-24 ${styles.card}`}>
+              <div className={`w-20 h-20 rounded-3xl flex items-center justify-center mb-6 ${styles.secondary}`}>
+                <User size={40} className="text-blue-500" />
+              </div>
+              <h2 className="text-3xl font-black tracking-tighter mb-6">{selectedActor.name}</h2>
+              
+              <div className="space-y-4">
+                <div className="flex justify-between items-center py-3 border-b group">
+                  <span className={`text-[10px] font-black uppercase tracking-widest opacity-50`}>Weight</span>
+                  <span className="font-bold">{selectedActor.weight} kg</span>
+                </div>
+                <div className="flex justify-between items-center py-3 border-b">
+                  <span className={`text-[10px] font-black uppercase tracking-widest opacity-50`}>Height</span>
+                  <span className="font-bold">{selectedActor.height} cm</span>
+                </div>
+                <div className="flex justify-between items-center py-3 border-b">
+                  <span className={`text-[10px] font-black uppercase tracking-widest opacity-50`}>Shoulder</span>
+                  <span className="font-bold">{selectedActor.shoulder_size} cm</span>
+                </div>
+                <div className="flex justify-between items-center py-3 border-b">
+                  <span className={`text-[10px] font-black uppercase tracking-widest opacity-50`}>Waist</span>
+                  <span className="font-bold">{selectedActor.waist_size} cm</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Actor Shots */}
+          <div className="lg:col-span-3 space-y-8">
+            <div className="flex justify-between items-center">
+              <h3 className="text-2xl font-black tracking-tighter">Production Shots</h3>
+              {!isViewOnly && (
+                <button 
+                  onClick={() => {
+                    setActiveActorId(selectedActor.id);
+                    setShotNumber(actorShots.length + 1);
+                  }}
+                  className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-xs ${styles.button}`}
+                >
+                  <Plus size={16} /> Add New Shot
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+              {actorShots.map(shot => (
+                <motion.div 
+                  key={shot.id} 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`p-6 rounded-[2rem] border overflow-hidden ${styles.card}`}
+                >
+                  <div className="flex justify-between items-center mb-6">
+                    <span className="px-3 py-1 bg-blue-500 text-white rounded-full text-[10px] font-black uppercase tracking-widest">Shot {shot.shot_number}</span>
+                  </div>
+                  
+                  <div className={`grid gap-3 ${(shot.clothing_item_ids || []).length > 2 ? 'grid-cols-2' : 'grid-cols-1 sm:grid-cols-2'}`}>
+                    {(shot.clothing_item_ids || []).map(itemId => {
+                      const item = (clothes || []).find(c => String(c.id) === String(itemId));
+                      if (!item) return (
+                        <div key={itemId} className="p-4 rounded-xl bg-zinc-100 border border-dashed flex flex-col items-center justify-center text-center">
+                          <AlertCircle size={16} className="text-zinc-300 mb-1" />
+                          <p className="text-[8px] font-bold opacity-30">Item sync error</p>
+                        </div>
+                      );
+                      return (
+                        <div key={itemId} className="group relative">
+                          <div className="aspect-[3/4] rounded-2xl overflow-hidden border shadow-sm group-hover:shadow-md transition-all">
+                            <img src={item.image_url} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" referrerPolicy="no-referrer" />
+                          </div>
+                          <div className="p-3">
+                            <p className="text-[10px] font-black uppercase tracking-widest opacity-50 mb-1">{item.type || 'Piece'}</p>
+                            <p className="text-xs font-bold truncate">{item.name || 'Untitled'}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              ))}
+              {actorShots.length === 0 && (
+                <div className={`col-span-full py-20 text-center border-2 border-dashed rounded-[2rem] ${styles.muted}`}>
+                  No shots added to this profile yet.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (selectedProject) {
     const projectActors = actors.filter(a => a.project_id === selectedProject.id);
     
     return (
-      <div className="space-y-8">
-        <div className="flex items-center justify-between">
+      <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
+        <div className={`sticky top-[80px] z-30 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 py-8 -mx-6 px-6 border-b transition-all ${styles.bg} backdrop-blur-md`}>
           <button 
             onClick={() => setSelectedProject(null)}
-            className={`flex items-center gap-2 font-bold ${styles.accent}`}
+            className={`flex items-center gap-2 font-black uppercase tracking-widest text-xs ${styles.accent}`}
           >
-            <ChevronRight className="rotate-180" size={20} /> Back to Projects
+            <ChevronRight className="rotate-180" size={16} /> Back to Projects
           </button>
-          <div className="flex gap-4">
+          
+          <div className="flex flex-col sm:flex-row gap-4">
             {!isViewOnly && (
               <button 
                 onClick={() => setShowAddActor(true)}
-                className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-bold ${styles.button}`}
+                className={`flex items-center justify-center gap-3 px-8 py-4 rounded-3xl font-black uppercase tracking-widest text-sm shadow-xl transition-all active:scale-95 ${styles.button} hover:shadow-blue-500/20`}
               >
-                <Plus size={18} /> Add Actor
+                <Plus size={20} /> Add Actor
               </button>
             )}
             <button 
               onClick={exportPDF}
               disabled={isSubmitting}
-              className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-bold bg-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-lg ${isSubmitting ? 'opacity-50' : ''}`}
+              className={`flex items-center justify-center gap-3 px-8 py-4 rounded-3xl font-black uppercase tracking-widest text-sm bg-zinc-900 text-white hover:bg-black transition-all shadow-xl active:scale-95 ${isSubmitting ? 'opacity-50' : ''}`}
             >
-              <Download size={18} /> {isSubmitting ? 'Generating...' : 'Download PDF'}
+              <Download size={20} /> {isSubmitting ? 'Generating...' : 'Export PDF'}
             </button>
           </div>
         </div>
 
-        <div ref={pdfRef} className={`p-10 rounded-[3rem] border bg-white ${styles.border}`}>
-          <div className="mb-12 border-b pb-8">
-            <h2 className="text-4xl font-black tracking-tighter mb-2">{selectedProject.name}</h2>
-            <p className="text-zinc-500">{selectedProject.description}</p>
-            <p className="text-xs font-bold uppercase tracking-widest mt-4 opacity-50">Production Report • {new Date().toLocaleDateString()}</p>
-          </div>
-
-          <div className="space-y-12">
-            {projectActors.map(actor => {
-              const actorShots = shots.filter(s => s.actor_id === actor.id).sort((a,b) => a.shot_number - b.shot_number);
-              return (
-                <div key={actor.id} className="grid grid-cols-1 md:grid-cols-4 gap-8">
-                  <div className="md:col-span-1 border-r pr-6">
-                    <h3 className="text-xl font-bold mb-4 flex items-center gap-2"><User size={20} className="text-blue-500" /> {actor.name}</h3>
-                    <div className="space-y-2 text-sm text-zinc-600">
-                      <div className="flex justify-between"><span>Weight:</span> <span className="font-bold">{actor.weight} kg</span></div>
-                      <div className="flex justify-between"><span>Height:</span> <span className="font-bold">{actor.height} cm</span></div>
-                      <div className="flex justify-between"><span>Shoulder:</span> <span className="font-bold">{actor.shoulder_size} cm</span></div>
-                      <div className="flex justify-between"><span>Waist:</span> <span className="font-bold">{actor.waist_size} cm</span></div>
-                    </div>
-                  </div>
-                  <div className="md:col-span-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {actorShots.map(shot => (
-                        <div key={shot.id} className="p-4 rounded-2xl bg-zinc-50 border border-zinc-100">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-2">Shot {shot.shot_number}</p>
-                          <div className="flex gap-2">
-                            {shot.clothing_item_ids.map(itemId => {
-                              const item = clothes.find(c => c.id === itemId);
-                              return item ? (
-                                <div key={itemId} className="flex-1 text-center">
-                                  <div className="aspect-square rounded-xl overflow-hidden mb-2 border bg-white">
-                                    <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                                  </div>
-                                  <p className="text-[10px] font-bold line-clamp-1">{item.name}</p>
-                                </div>
-                              ) : null;
-                            })}
-                          </div>
-                        </div>
-                      ))}
-                      {!isViewOnly && (
-                        <button 
-                          onClick={() => setActiveActorId(actor.id)}
-                          className="p-4 rounded-2xl border border-dashed border-zinc-200 flex items-center justify-center gap-2 text-sm font-bold text-zinc-400 hover:border-blue-500 hover:text-blue-500 transition-all"
-                        >
-                          <Plus size={16} /> Add Shot
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+        <div className="mb-12">
+          <h2 className="text-4xl font-black tracking-tighter mb-2">{selectedProject.name}</h2>
+          <p className={styles.accent}>{selectedProject.description}</p>
         </div>
 
-        {/* Add Shot Modal */}
-        {activeActorId && (
-          <div className="fixed inset-0 z-[300] flex items-center justify-center p-6 bg-black/50 backdrop-blur-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+          {projectActors.map(actor => (
             <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className={`w-full max-w-lg p-10 rounded-[3rem] shadow-2xl border ${styles.modal} ${styles.border}`}
+              key={actor.id}
+              whileHover={{ y: -10 }}
+              onClick={() => setSelectedActor(actor)}
+              className={`p-8 rounded-[2.5rem] border group cursor-pointer transition-all ${styles.card} hover:border-blue-500 hover:shadow-2xl hover:shadow-blue-500/10`}
             >
-              <div className="flex justify-between items-center mb-8">
-                <h3 className="text-2xl font-black tracking-tighter">Add Costume Shot</h3>
-                <button onClick={() => setActiveActorId(null)} className={`p-2 rounded-full ${styles.secondary}`}><X size={20} /></button>
+              <div className={`w-16 h-16 rounded-3xl flex items-center justify-center mb-6 transition-all group-hover:scale-110 ${styles.secondary}`}>
+                <User size={32} className="text-blue-500" />
               </div>
-              <form onSubmit={(e) => {
-                e.preventDefault();
-                const formData = new FormData(e.currentTarget);
-                handleAddShot(
-                  activeActorId, 
-                  Number(formData.get('shotNum')), 
-                  formData.get('cloth1') as string,
-                  formData.get('cloth2') as string
-                );
-                setActiveActorId(null);
-              }} className="space-y-6">
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="col-span-1">
-                    <label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">Shot #</label>
-                    <input name="shotNum" type="number" required defaultValue={(shots.filter(s => s.actor_id === activeActorId).length + 1)} className={`w-full p-4 rounded-2xl border ${styles.input}`} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">Cloth 1</label>
-                    <select name="cloth1" className={`w-full p-4 rounded-2xl border ${styles.input}`}>
-                      <option value="">None</option>
-                      {clothes.map(c => <option key={c.id} value={c.id}>{c.name} ({c.type})</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">Cloth 2</label>
-                    <select name="cloth2" className={`w-full p-4 rounded-2xl border ${styles.input}`}>
-                      <option value="">None</option>
-                      {clothes.map(c => <option key={c.id} value={c.id}>{c.name} ({c.type})</option>)}
-                    </select>
-                  </div>
-                </div>
-                <button type="submit" className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest ${styles.button} shadow-xl`}>
-                  Save Shot
-                </button>
-              </form>
+              <h3 className="text-2xl font-black tracking-tight mb-2 truncate">{actor.name}</h3>
+              <p className={`text-[10px] font-black uppercase tracking-widest opacity-50`}>{shots.filter(s => s.actor_id === actor.id).length} Costumes Shots</p>
+              
+              <div className="mt-8 flex items-center justify-between pt-6 border-t font-black uppercase tracking-widest text-[10px] text-blue-500 group-hover:gap-3 transition-all">
+                Open Profile <ChevronRight size={14} />
+              </div>
             </motion.div>
-          </div>
-        )}
+          ))}
+          {!isViewOnly && projectActors.length === 0 && (
+            <div 
+              onClick={() => setShowAddActor(true)}
+              className="p-8 rounded-[2.5rem] border-2 border-dashed flex flex-col items-center justify-center text-center cursor-pointer hover:border-blue-500 transition-all group"
+            >
+              <div className={`w-16 h-16 rounded-3xl flex items-center justify-center mb-6 ${styles.secondary}`}>
+                <Plus size={32} className="opacity-20 group-hover:opacity-100 transition-opacity" />
+              </div>
+              <p className="font-bold opacity-30">No actors yet</p>
+              <p className="text-[10px] opacity-20 uppercase font-black tracking-widest mt-2">Tap to add your first actress</p>
+            </div>
+          )}
+        </div>
 
-        {/* Add Actor Modal */}
+        {/* Hidden PDF content for export - Absolute positioned instead of hidden to allow capture */}
+        <div className="fixed top-0 left-0 -z-50 pointer-events-none opacity-0 overflow-hidden h-0">
+          {projectActors.map(actor => {
+            const actorShots = shots.filter(s => s.actor_id === actor.id).sort((a,b) => a.shot_number - b.shot_number);
+            return (
+              <div 
+                key={actor.id} 
+                id={`pdf-actor-${actor.id}`}
+                className="bg-white text-zinc-900 p-12 w-[210mm] min-h-[297mm]"
+              >
+                {/* PDF Header - Project Info */}
+                <div className="border-b-[3px] border-zinc-900 pb-8 mb-10 flex justify-between items-end">
+                  <div>
+                    <h1 className="text-4xl font-black tracking-tighter uppercase leading-none">{selectedProject.name}</h1>
+                    <p className="text-xs font-bold uppercase tracking-widest text-zinc-400 mt-2">Production Costume Report</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-black uppercase tracking-widest opacity-30">{new Date().toLocaleDateString()}</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-500">Page for {actor.name}</p>
+                  </div>
+                </div>
+
+                {/* Actor Profile Section */}
+                <div className="flex gap-10 mb-12 items-start">
+                  <div className="flex-1">
+                    <h2 className="text-3xl font-black tracking-tighter mb-4">{actor.name}</h2>
+                    <div className="grid grid-cols-2 gap-x-8 gap-y-3">
+                       <div className="flex justify-between border-b py-1">
+                         <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Weight</span>
+                         <span className="text-sm font-bold">{actor.weight} kg</span>
+                       </div>
+                       <div className="flex justify-between border-b py-1">
+                         <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Height</span>
+                         <span className="text-sm font-bold">{actor.height} cm</span>
+                       </div>
+                       <div className="flex justify-between border-b py-1">
+                         <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Shoulder</span>
+                         <span className="text-sm font-bold">{actor.shoulder_size} cm</span>
+                       </div>
+                       <div className="flex justify-between border-b py-1">
+                         <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Waist</span>
+                         <span className="text-sm font-bold">{actor.waist_size} cm</span>
+                       </div>
+                    </div>
+                  </div>
+                  <div className="w-40 aspect-square bg-zinc-100 rounded-2xl flex items-center justify-center border-2 border-zinc-200">
+                    <p className="text-[8px] font-black uppercase tracking-widest opacity-20">Actor Photo</p>
+                  </div>
+                </div>
+
+                {/* Shots Grid */}
+                <div>
+                   <h3 className="text-sm font-black uppercase tracking-widest mb-6 border-l-4 border-blue-500 pl-4">Selected Shots & Wardrobe</h3>
+                   <div className="grid grid-cols-2 gap-8">
+                     {actorShots.map(shot => (
+                       <div key={shot.id} className="p-6 rounded-3xl bg-zinc-50 border-2 border-zinc-100">
+                         <div className="flex justify-between items-center mb-4">
+                           <span className="px-3 py-1 bg-blue-500 text-white rounded-full text-[8px] font-black uppercase tracking-widest">Shot {shot.shot_number}</span>
+                         </div>
+                         <div className="grid grid-cols-2 gap-4">
+                            {shot.clothing_item_ids.map(itemId => {
+                              const item = clothes.find(c => c.id === itemId);
+                              return item && (
+                                <div key={itemId} className="space-y-2">
+                                  <div className="aspect-[3/4] rounded-xl overflow-hidden border shadow-sm">
+                                    <img src={item.image_url} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                  </div>
+                                  <div className="px-1">
+                                    <p className="text-[8px] font-black uppercase tracking-widest opacity-40 truncate">{item.type}</p>
+                                    <p className="text-[10px] font-black truncate">{item.name}</p>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                         </div>
+                       </div>
+                     ))}
+                     {actorShots.length === 0 && (
+                       <div className="col-span-2 py-10 text-center border-2 border-dashed rounded-3xl opacity-30">
+                         <p className="text-xs font-bold font-black uppercase tracking-widest">No shots assigned</p>
+                       </div>
+                     )}
+                   </div>
+                </div>
+                
+                {/* Footer */}
+                <div className="mt-auto pt-10 border-t border-zinc-100 text-[8px] font-black uppercase tracking-widest opacity-20 flex justify-between">
+                  <span>Generated via Production Costume Studio</span>
+                  <span>© {new Date().getFullYear()} {selectedProject.name}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Add Actor Modal for Project list view */}
         {showAddActor && (
           <div className="fixed inset-0 z-[300] flex items-center justify-center p-6 bg-black/50 backdrop-blur-sm">
             <motion.div 
@@ -881,25 +1179,13 @@ const ProductionBoard = ({
                   <input required value={newActor.name} onChange={e => setNewActor({...newActor, name: e.target.value})} className={`w-full p-4 rounded-2xl border ${styles.input}`} placeholder="Actor Name" />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">Weight (kg)</label>
-                    <input value={newActor.weight} onChange={e => setNewActor({...newActor, weight: e.target.value})} className={`w-full p-4 rounded-2xl border ${styles.input}`} placeholder="65" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">Height (cm)</label>
-                    <input value={newActor.height} onChange={e => setNewActor({...newActor, height: e.target.value})} className={`w-full p-4 rounded-2xl border ${styles.input}`} placeholder="180" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">Shoulder Size</label>
-                    <input value={newActor.shoulder_size} onChange={e => setNewActor({...newActor, shoulder_size: e.target.value})} className={`w-full p-4 rounded-2xl border ${styles.input}`} placeholder="42" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">Waist Size</label>
-                    <input value={newActor.waist_size} onChange={e => setNewActor({...newActor, waist_size: e.target.value})} className={`w-full p-4 rounded-2xl border ${styles.input}`} placeholder="32" />
-                  </div>
+                  <div><label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">Weight (kg)</label><input value={newActor.weight} onChange={e => setNewActor({...newActor, weight: e.target.value})} className={`w-full p-4 rounded-2xl border ${styles.input}`} /></div>
+                  <div><label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">Height (cm)</label><input value={newActor.height} onChange={e => setNewActor({...newActor, height: e.target.value})} className={`w-full p-4 rounded-2xl border ${styles.input}`} /></div>
+                  <div><label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">Shoulder Size</label><input value={newActor.shoulder_size} onChange={e => setNewActor({...newActor, shoulder_size: e.target.value})} className={`w-full p-4 rounded-2xl border ${styles.input}`} /></div>
+                  <div><label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">Waist Size</label><input value={newActor.waist_size} onChange={e => setNewActor({...newActor, waist_size: e.target.value})} className={`w-full p-4 rounded-2xl border ${styles.input}`} /></div>
                 </div>
-                <button type="submit" disabled={isSubmitting} className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest ${styles.button} shadow-xl`}>
-                  {isSubmitting ? 'Adding...' : 'Add Actor'}
+                <button type="submit" disabled={isSubmitting} className={`w-full py-5 rounded-[2rem] font-black uppercase tracking-widest text-sm shadow-2xl transition-all active:scale-95 ${styles.button} hover:shadow-blue-500/20`}>
+                  Confirm Actor
                 </button>
               </form>
             </motion.div>
@@ -911,17 +1197,17 @@ const ProductionBoard = ({
 
   return (
     <div className="space-y-12">
-      <div className="flex justify-between items-center mb-8">
+      <div className={`sticky top-[80px] z-30 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-8 py-6 -mx-6 px-6 border-b transition-all ${styles.bg} backdrop-blur-md`}>
         <div>
-          <h2 className="text-4xl font-black tracking-tighter">Production Board</h2>
+          <h2 className="text-3xl md:text-4xl font-black tracking-tighter">Production Board</h2>
           <p className={styles.accent}>Manage costume planning for film and TV projects.</p>
         </div>
         {!isViewOnly && (
           <button 
             onClick={() => setShowAddProject(true)}
-            className={`flex items-center gap-2 px-8 py-4 rounded-2xl font-black uppercase tracking-widest shadow-xl transition-all ${styles.button}`}
+            className={`w-full sm:w-auto flex items-center justify-center gap-3 px-10 py-5 rounded-[2rem] font-black uppercase tracking-widest text-sm shadow-2xl transition-all active:scale-95 ${styles.button} hover:shadow-blue-500/20`}
           >
-            <Plus size={20} /> Create Project
+            <Plus size={24} /> New Production
           </button>
         )}
       </div>
@@ -969,8 +1255,8 @@ const ProductionBoard = ({
                 <label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">Description</label>
                 <textarea value={newProject.description} onChange={e => setNewProject({...newProject, description: e.target.value})} className={`w-full p-4 rounded-2xl border ${styles.input} h-32`} placeholder="Project details..." />
               </div>
-              <button type="submit" disabled={isSubmitting} className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest ${styles.button} shadow-xl`}>
-                {isSubmitting ? 'Creating...' : 'Launch Project'}
+              <button type="submit" disabled={isSubmitting} className={`w-full py-5 rounded-[2rem] font-black uppercase tracking-widest text-sm shadow-2xl transition-all active:scale-95 ${styles.button} hover:shadow-blue-500/20`}>
+                {isSubmitting ? 'Launching...' : 'Confirm Production'}
               </button>
             </form>
           </motion.div>
@@ -2199,7 +2485,11 @@ const CompanyPortal = ({ onLogin }: { onLogin: (company: Company) => void }) => 
     try {
       // Ensure the user is signed into Firebase Auth for security rules
       if (!auth.currentUser) {
-        await signInAnonymously(auth);
+        try {
+          await signInAnonymously(auth);
+        } catch (authErr: any) {
+          console.error("Anonymous auth failed:", authErr);
+        }
       }
 
       if (mode === 'login') {
@@ -2396,7 +2686,7 @@ function App() {
         if (!auth.currentUser) {
           try {
             await signInAnonymously(auth);
-          } catch (authErr) {
+          } catch (authErr: any) {
             console.error("Anonymous auth failed:", authErr);
           }
         }
@@ -2460,14 +2750,20 @@ function App() {
 
     let clothesQuery = query(
       collection(db, "clothes"), 
-      where("company_id", "==", currentCompany.id),
-      orderBy("created_at", "desc")
+      where("company_id", "==", currentCompany.id)
     );
 
     const unsubClothes = onSnapshot(
       clothesQuery, 
       (snapshot) => {
-        setClothes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ClothingItem)));
+        const fetchedClothes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ClothingItem));
+        // Sort locally to ensure items without created_at still appear
+        fetchedClothes.sort((a, b) => {
+          const dateA = a.created_at?.toMillis?.() || a.created_at || 0;
+          const dateB = b.created_at?.toMillis?.() || b.created_at || 0;
+          return dateB - dateA;
+        });
+        setClothes(fetchedClothes);
       }, 
       (error) => {
         handleFirestoreError(error, OperationType.GET, "clothes");
@@ -2490,8 +2786,12 @@ function App() {
     );
 
     const unsubProjects = onSnapshot(
-      query(collection(db, "projects"), where("company_id", "==", currentCompany.id), orderBy("created_at", "desc")),
-      (snapshot) => setProjects(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project))),
+      query(collection(db, "projects"), where("company_id", "==", currentCompany.id)),
+      (snapshot) => {
+        const fetched = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
+        fetched.sort((a,b) => (b.created_at?.toMillis?.() || 0) - (a.created_at?.toMillis?.() || 0));
+        setProjects(fetched);
+      },
       (error) => console.error("Error projects:", error)
     );
 
@@ -2516,11 +2816,12 @@ function App() {
       unsubRentals = onSnapshot(
         query(
           collection(db, "rentals"), 
-          where("company_id", "==", currentCompany.id),
-          orderBy("rental_date", "desc")
+          where("company_id", "==", currentCompany.id)
         ), 
         (snapshot) => {
-          setRentals(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Rental)));
+          const fetched = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Rental));
+          fetched.sort((a,b) => (b.rental_date?.toMillis?.() || 0) - (a.rental_date?.toMillis?.() || 0));
+          setRentals(fetched);
         }, 
         (error) => {
           handleFirestoreError(error, OperationType.GET, "rentals");
@@ -2872,7 +3173,7 @@ function App() {
         setActiveView={setActiveView}
       />
 
-      <main className="pt-24 pb-24 px-6 max-w-7xl mx-auto">
+      <main className="pt-32 pb-24 px-6 max-w-7xl mx-auto">
         {activeView === 'production' ? (
           <ProductionBoard 
             projects={projects}
@@ -3031,7 +3332,7 @@ function App() {
 
         {/* Inventory Section */}
         <section>
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
+          <div className={`sticky top-[80px] z-30 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12 py-6 transition-all ${styles.bg} border-b -mx-6 px-6 backdrop-blur-md`}>
             <div>
               <h3 className="text-2xl font-bold tracking-tight">Wardrobe Inventory</h3>
               <p className={styles.accent}>Browse and filter your entire clothing collection.</p>
