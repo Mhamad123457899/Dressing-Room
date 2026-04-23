@@ -60,6 +60,18 @@ service cloud.firestore {
              data.status in ['active', 'returned'];
     }
 
+    function isValidProject(data) {
+      return data.company_id is string && data.name is string && data.name.size() > 0;
+    }
+
+    function isValidActor(data) {
+      return data.company_id is string && data.project_id is string && data.name is string && data.name.size() > 0;
+    }
+
+    function isValidShot(data) {
+      return data.company_id is string && data.project_id is string && data.actor_id is string && data.shot_number is number && data.clothing_item_ids is list;
+    }
+
     // Rules
     match /companies/{companyId} {
       allow read: if true;
@@ -85,6 +97,27 @@ service cloud.firestore {
     match /rentals/{rentalId} {
       allow read: if isAuthenticated();
       allow write: if isAuthenticated();
+    }
+
+    match /projects/{projectId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidProject(request.resource.data);
+      allow update: if isAuthenticated() && isValidProject(request.resource.data);
+      allow delete: if isAuthenticated();
+    }
+
+    match /actors/{actorId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidActor(request.resource.data);
+      allow update: if isAuthenticated() && isValidActor(request.resource.data);
+      allow delete: if isAuthenticated();
+    }
+
+    match /shots/{shotId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidShot(request.resource.data);
+      allow update: if isAuthenticated() && isValidShot(request.resource.data);
+      allow delete: if isAuthenticated();
     }
     
     match /company_secrets/{secretId} {

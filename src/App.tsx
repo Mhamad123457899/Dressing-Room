@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, Component, ErrorInfo, ReactNode } from "react";
 import { useTranslation } from 'react-i18next';
+import { jsPDF } from "jspdf";
+import html2canvas from "html2canvas";
 import { 
   Plus, 
   Trash2, 
@@ -18,14 +20,20 @@ import {
   X,
   Check,
   AlertCircle,
-  Share2
+  Share2,
+  Download,
+  Activity,
+  Dna,
+  History,
+  FileText
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   db, 
   auth, 
   onAuthStateChanged,
-  User as FirebaseUser 
+  User as FirebaseUser,
+  signInAnonymously
 } from "./firebase";
 import { 
   collection, 
@@ -107,6 +115,36 @@ interface Client {
   id_image_url: string;
   company_name: string;
   company_phone: string;
+  created_at: any;
+}
+
+interface Project {
+  id: string;
+  company_id: string;
+  name: string;
+  description: string;
+  created_at: any;
+}
+
+interface Actor {
+  id: string;
+  company_id: string;
+  project_id: string;
+  name: string;
+  weight: string;
+  height: string;
+  shoulder_size: string;
+  waist_size: string;
+  created_at: any;
+}
+
+interface Shot {
+  id: string;
+  company_id: string;
+  project_id: string;
+  actor_id: string;
+  shot_number: number;
+  clothing_item_ids: string[];
   created_at: any;
 }
 
@@ -325,13 +363,15 @@ const ThemeProvider = ({ children }: { children: ReactNode }) => {
 
 import { LanguageSwitcher } from './components/LanguageSwitcher';
 // ... (rest of imports)
-const Navbar = ({ isAdmin, onOpenAdmin, t, currentCompany, isViewOnly, onLogout }: { 
+const Navbar = ({ isAdmin, onOpenAdmin, t, currentCompany, isViewOnly, onLogout, activeView, setActiveView }: { 
   isAdmin: boolean, 
   onOpenAdmin: () => void, 
   t: any, 
   currentCompany: Company | null, 
   isViewOnly: boolean,
-  onLogout: () => void
+  onLogout: () => void,
+  activeView: 'closet' | 'production',
+  setActiveView: (view: 'closet' | 'production') => void
 }) => {
   const { theme, setTheme } = useTheme();
   const [showThemeMenu, setShowThemeMenu] = useState(false);
@@ -339,11 +379,28 @@ const Navbar = ({ isAdmin, onOpenAdmin, t, currentCompany, isViewOnly, onLogout 
 
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-md border-b px-6 py-2 flex justify-between items-center transition-colors duration-300 ${styles.navbar}`}>
-      <div className="flex items-center gap-4">
-        <Logo size={40} src={currentCompany?.logo_url} />
-        <h1 className={`text-xl font-bold tracking-tight ${styles.text}`}>
-          {currentCompany?.name || 'Şan Closet Studio'}
-        </h1>
+      <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4">
+          <Logo size={40} src={currentCompany?.logo_url} />
+          <h1 className={`text-xl font-bold tracking-tight ${styles.text}`}>
+            {currentCompany?.name || 'Şan Closet Studio'}
+          </h1>
+        </div>
+        
+        <div className={`hidden md:flex items-center gap-1 p-1 rounded-xl ${styles.secondary}`}>
+          <button 
+            onClick={() => setActiveView('closet')}
+            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${activeView === 'closet' ? styles.button : 'hover:bg-black/5'}`}
+          >
+            <History size={14} /> Closet
+          </button>
+          <button 
+            onClick={() => setActiveView('production')}
+            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${activeView === 'production' ? styles.button : 'hover:bg-black/5'}`}
+          >
+            <Activity size={14} /> Production
+          </button>
+        </div>
       </div>
       <div className="flex items-center gap-4">
         <div className="relative">
@@ -554,7 +611,382 @@ const ClothingCard = ({ item, onAddToCollection, onRent, isRented, activeRentals
   );
 };
 
-const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn, onDeleteRental, setNotification, setConfirmModal, setAddToCollectionModal, seedSampleData, isSubmitting, currentCompany, isViewOnly }: { 
+const ProductionBoard = ({ 
+  projects, 
+  actors, 
+  shots, 
+  clothes,
+  currentCompany,
+  isAdmin,
+  isViewOnly,
+  setNotification
+}: { 
+  projects: Project[], 
+  actors: Actor[], 
+  shots: Shot[], 
+  clothes: ClothingItem[],
+  currentCompany: Company | null,
+  isAdmin: boolean,
+  isViewOnly: boolean,
+  setNotification: (n: {message: string, type: 'success' | 'error'}) => void
+}) => {
+  const { theme } = useTheme();
+  const styles = THEMES[theme];
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [showAddProject, setShowAddProject] = useState(false);
+  const [showAddActor, setShowAddActor] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const pdfRef = useRef<HTMLDivElement>(null);
+
+  const [newProject, setNewProject] = useState({ name: "", description: "" });
+  const [newActor, setNewActor] = useState({ 
+    name: "", weight: "", height: "", shoulder_size: "", waist_size: "" 
+  });
+  const [activeActorId, setActiveActorId] = useState<string | null>(null);
+
+  const handleCreateProject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentCompany) return;
+    setIsSubmitting(true);
+    try {
+      await addDoc(collection(db, "projects"), {
+        ...newProject,
+        company_id: currentCompany.id,
+        created_at: Timestamp.now()
+      });
+      setNewProject({ name: "", description: "" });
+      setShowAddProject(false);
+      setNotification({ message: "Project created successfully!", type: "success" });
+    } catch (err) {
+      setNotification({ message: "Failed to create project.", type: "error" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleAddActor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedProject || !currentCompany) return;
+    setIsSubmitting(true);
+    try {
+      await addDoc(collection(db, "actors"), {
+        ...newActor,
+        company_id: currentCompany.id,
+        project_id: selectedProject.id,
+        created_at: Timestamp.now()
+      });
+      setNewActor({ name: "", weight: "", height: "", shoulder_size: "", waist_size: "" });
+      setShowAddActor(false);
+      setNotification({ message: "Actor added successfully!", type: "success" });
+    } catch (err) {
+      setNotification({ message: "Failed to add actor.", type: "error" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleAddShot = async (actorId: string, shotNumber: number, firstItem: string, secondItem: string) => {
+    if (!selectedProject || !currentCompany) return;
+    try {
+      const itemIds = [firstItem, secondItem].filter(id => id !== "");
+      await addDoc(collection(db, "shots"), {
+        company_id: currentCompany.id,
+        project_id: selectedProject.id,
+        actor_id: actorId,
+        shot_number: shotNumber,
+        clothing_item_ids: itemIds,
+        created_at: Timestamp.now()
+      });
+      setNotification({ message: `Shot ${shotNumber} added!`, type: "success" });
+    } catch (err) {
+      setNotification({ message: "Failed to add shot.", type: "error" });
+    }
+  };
+
+  const exportPDF = async () => {
+    if (!pdfRef.current) return;
+    setIsSubmitting(true);
+    try {
+      const canvas = await html2canvas(pdfRef.current, { scale: 2 });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgWidth = 210;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+      pdf.save(`${selectedProject?.name || 'Production'}_report.pdf`);
+      setNotification({ message: "PDF exported successfully!", type: "success" });
+    } catch (err) {
+      setNotification({ message: "Failed to export PDF.", type: "error" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (selectedProject) {
+    const projectActors = actors.filter(a => a.project_id === selectedProject.id);
+    
+    return (
+      <div className="space-y-8">
+        <div className="flex items-center justify-between">
+          <button 
+            onClick={() => setSelectedProject(null)}
+            className={`flex items-center gap-2 font-bold ${styles.accent}`}
+          >
+            <ChevronRight className="rotate-180" size={20} /> Back to Projects
+          </button>
+          <div className="flex gap-4">
+            {!isViewOnly && (
+              <button 
+                onClick={() => setShowAddActor(true)}
+                className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-bold ${styles.button}`}
+              >
+                <Plus size={18} /> Add Actor
+              </button>
+            )}
+            <button 
+              onClick={exportPDF}
+              disabled={isSubmitting}
+              className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-bold bg-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-lg ${isSubmitting ? 'opacity-50' : ''}`}
+            >
+              <Download size={18} /> {isSubmitting ? 'Generating...' : 'Download PDF'}
+            </button>
+          </div>
+        </div>
+
+        <div ref={pdfRef} className={`p-10 rounded-[3rem] border bg-white ${styles.border}`}>
+          <div className="mb-12 border-b pb-8">
+            <h2 className="text-4xl font-black tracking-tighter mb-2">{selectedProject.name}</h2>
+            <p className="text-zinc-500">{selectedProject.description}</p>
+            <p className="text-xs font-bold uppercase tracking-widest mt-4 opacity-50">Production Report • {new Date().toLocaleDateString()}</p>
+          </div>
+
+          <div className="space-y-12">
+            {projectActors.map(actor => {
+              const actorShots = shots.filter(s => s.actor_id === actor.id).sort((a,b) => a.shot_number - b.shot_number);
+              return (
+                <div key={actor.id} className="grid grid-cols-1 md:grid-cols-4 gap-8">
+                  <div className="md:col-span-1 border-r pr-6">
+                    <h3 className="text-xl font-bold mb-4 flex items-center gap-2"><User size={20} className="text-blue-500" /> {actor.name}</h3>
+                    <div className="space-y-2 text-sm text-zinc-600">
+                      <div className="flex justify-between"><span>Weight:</span> <span className="font-bold">{actor.weight} kg</span></div>
+                      <div className="flex justify-between"><span>Height:</span> <span className="font-bold">{actor.height} cm</span></div>
+                      <div className="flex justify-between"><span>Shoulder:</span> <span className="font-bold">{actor.shoulder_size} cm</span></div>
+                      <div className="flex justify-between"><span>Waist:</span> <span className="font-bold">{actor.waist_size} cm</span></div>
+                    </div>
+                  </div>
+                  <div className="md:col-span-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {actorShots.map(shot => (
+                        <div key={shot.id} className="p-4 rounded-2xl bg-zinc-50 border border-zinc-100">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-2">Shot {shot.shot_number}</p>
+                          <div className="flex gap-2">
+                            {shot.clothing_item_ids.map(itemId => {
+                              const item = clothes.find(c => c.id === itemId);
+                              return item ? (
+                                <div key={itemId} className="flex-1 text-center">
+                                  <div className="aspect-square rounded-xl overflow-hidden mb-2 border bg-white">
+                                    <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                  </div>
+                                  <p className="text-[10px] font-bold line-clamp-1">{item.name}</p>
+                                </div>
+                              ) : null;
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                      {!isViewOnly && (
+                        <button 
+                          onClick={() => setActiveActorId(actor.id)}
+                          className="p-4 rounded-2xl border border-dashed border-zinc-200 flex items-center justify-center gap-2 text-sm font-bold text-zinc-400 hover:border-blue-500 hover:text-blue-500 transition-all"
+                        >
+                          <Plus size={16} /> Add Shot
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Add Shot Modal */}
+        {activeActorId && (
+          <div className="fixed inset-0 z-[300] flex items-center justify-center p-6 bg-black/50 backdrop-blur-sm">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className={`w-full max-w-lg p-10 rounded-[3rem] shadow-2xl border ${styles.modal} ${styles.border}`}
+            >
+              <div className="flex justify-between items-center mb-8">
+                <h3 className="text-2xl font-black tracking-tighter">Add Costume Shot</h3>
+                <button onClick={() => setActiveActorId(null)} className={`p-2 rounded-full ${styles.secondary}`}><X size={20} /></button>
+              </div>
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                const formData = new FormData(e.currentTarget);
+                handleAddShot(
+                  activeActorId, 
+                  Number(formData.get('shotNum')), 
+                  formData.get('cloth1') as string,
+                  formData.get('cloth2') as string
+                );
+                setActiveActorId(null);
+              }} className="space-y-6">
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="col-span-1">
+                    <label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">Shot #</label>
+                    <input name="shotNum" type="number" required defaultValue={(shots.filter(s => s.actor_id === activeActorId).length + 1)} className={`w-full p-4 rounded-2xl border ${styles.input}`} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">Cloth 1</label>
+                    <select name="cloth1" className={`w-full p-4 rounded-2xl border ${styles.input}`}>
+                      <option value="">None</option>
+                      {clothes.map(c => <option key={c.id} value={c.id}>{c.name} ({c.type})</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">Cloth 2</label>
+                    <select name="cloth2" className={`w-full p-4 rounded-2xl border ${styles.input}`}>
+                      <option value="">None</option>
+                      {clothes.map(c => <option key={c.id} value={c.id}>{c.name} ({c.type})</option>)}
+                    </select>
+                  </div>
+                </div>
+                <button type="submit" className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest ${styles.button} shadow-xl`}>
+                  Save Shot
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Add Actor Modal */}
+        {showAddActor && (
+          <div className="fixed inset-0 z-[300] flex items-center justify-center p-6 bg-black/50 backdrop-blur-sm">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className={`w-full max-w-lg p-10 rounded-[3rem] shadow-2xl border ${styles.modal} ${styles.border}`}
+            >
+              <div className="flex justify-between items-center mb-8">
+                <h3 className="text-2xl font-black tracking-tighter">New Actor</h3>
+                <button onClick={() => setShowAddActor(false)} className={`p-2 rounded-full ${styles.secondary}`}><X size={20} /></button>
+              </div>
+              <form onSubmit={handleAddActor} className="space-y-6">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">Full Name</label>
+                  <input required value={newActor.name} onChange={e => setNewActor({...newActor, name: e.target.value})} className={`w-full p-4 rounded-2xl border ${styles.input}`} placeholder="Actor Name" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">Weight (kg)</label>
+                    <input value={newActor.weight} onChange={e => setNewActor({...newActor, weight: e.target.value})} className={`w-full p-4 rounded-2xl border ${styles.input}`} placeholder="65" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">Height (cm)</label>
+                    <input value={newActor.height} onChange={e => setNewActor({...newActor, height: e.target.value})} className={`w-full p-4 rounded-2xl border ${styles.input}`} placeholder="180" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">Shoulder Size</label>
+                    <input value={newActor.shoulder_size} onChange={e => setNewActor({...newActor, shoulder_size: e.target.value})} className={`w-full p-4 rounded-2xl border ${styles.input}`} placeholder="42" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">Waist Size</label>
+                    <input value={newActor.waist_size} onChange={e => setNewActor({...newActor, waist_size: e.target.value})} className={`w-full p-4 rounded-2xl border ${styles.input}`} placeholder="32" />
+                  </div>
+                </div>
+                <button type="submit" disabled={isSubmitting} className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest ${styles.button} shadow-xl`}>
+                  {isSubmitting ? 'Adding...' : 'Add Actor'}
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-12">
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h2 className="text-4xl font-black tracking-tighter">Production Board</h2>
+          <p className={styles.accent}>Manage costume planning for film and TV projects.</p>
+        </div>
+        {!isViewOnly && (
+          <button 
+            onClick={() => setShowAddProject(true)}
+            className={`flex items-center gap-2 px-8 py-4 rounded-2xl font-black uppercase tracking-widest shadow-xl transition-all ${styles.button}`}
+          >
+            <Plus size={20} /> Create Project
+          </button>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {projects.map(project => (
+          <motion.div 
+            key={project.id}
+            whileHover={{ y: -10 }}
+            onClick={() => setSelectedProject(project)}
+            className={`p-10 rounded-[3rem] border border-transparent shadow-xl cursor-pointer hover:border-black transition-all group ${styles.card}`}
+          >
+            <div className={`w-16 h-16 rounded-[1.5rem] flex items-center justify-center mb-8 ${styles.secondary}`}>
+              <Dna size={32} />
+            </div>
+            <h3 className="text-2xl font-bold mb-2 group-hover:text-blue-500 transition-colors">{project.name}</h3>
+            <p className={`mb-8 line-clamp-2 ${styles.accent}`}>{project.description}</p>
+            <div className="flex justify-between items-center pt-8 border-t">
+              <span className={`text-[10px] font-black uppercase tracking-widest opacity-50`}>{new Date(project.created_at?.toDate()).toLocaleDateString()}</span>
+              <div className="flex items-center gap-1 font-bold text-sm">
+                <User size={14} /> {actors.filter(a => a.project_id === project.id).length} Actors
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      {showAddProject && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-6 bg-black/50 backdrop-blur-sm">
+          <motion.div 
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className={`w-full max-w-lg p-10 rounded-[3rem] shadow-2xl border ${styles.modal} ${styles.border}`}
+          >
+            <div className="flex justify-between items-center mb-8">
+              <h3 className="text-2xl font-black tracking-tighter">Create New Project</h3>
+              <button onClick={() => setShowAddProject(false)} className={`p-2 rounded-full ${styles.secondary}`}><X size={20} /></button>
+            </div>
+            <form onSubmit={handleCreateProject} className="space-y-6">
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">Project Name</label>
+                <input required value={newProject.name} onChange={e => setNewProject({...newProject, name: e.target.value})} className={`w-full p-4 rounded-2xl border ${styles.input}`} placeholder="e.g. Summer Film Shoot" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">Description</label>
+                <textarea value={newProject.description} onChange={e => setNewProject({...newProject, description: e.target.value})} className={`w-full p-4 rounded-2xl border ${styles.input} h-32`} placeholder="Project details..." />
+              </div>
+              <button type="submit" disabled={isSubmitting} className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest ${styles.button} shadow-xl`}>
+                {isSubmitting ? 'Creating...' : 'Launch Project'}
+              </button>
+            </form>
+          </motion.div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const AdminPanel = ({ 
+  onClose, rentals, clothes, collections, clients, 
+  onReturn, onDeleteRental, setNotification, setConfirmModal, 
+  setAddToCollectionModal, seedSampleData, isSubmitting, 
+  currentCompany, isViewOnly,
+  projects, actors, shots
+}: { 
   onClose: () => void, 
   rentals: Rental[], 
   clothes: ClothingItem[], 
@@ -568,11 +1000,14 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
   seedSampleData: () => Promise<void>,
   isSubmitting: boolean,
   currentCompany: Company | null,
-  isViewOnly: boolean
+  isViewOnly: boolean,
+  projects: Project[],
+  actors: Actor[],
+  shots: Shot[]
 }) => {
   const { theme } = useTheme();
   const styles = THEMES[theme];
-  const [activeTab, setActiveTab] = useState<"clothes" | "collections" | "rentals" | "clients">("clothes");
+  const [activeTab, setActiveTab] = useState<"clothes" | "collections" | "rentals" | "clients" | "production">("clothes");
   const [rentalFilter, setRentalFilter] = useState<"active" | "all">("active");
   const [rentalSearch, setRentalSearch] = useState("");
   const [clientSearch, setClientSearch] = useState("");
@@ -893,6 +1328,14 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
             }`}
           >
             Active Rentals
+          </button>
+          <button 
+            onClick={() => setActiveTab("production")}
+            className={`px-6 py-2 rounded-full font-bold transition-all ${
+              activeTab === "production" ? styles.button : `${styles.accent} hover:opacity-80`
+            }`}
+          >
+            Production Projects
           </button>
         </div>
 
@@ -1415,6 +1858,17 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
               </div>
             </div>
           </div>
+        ) : activeTab === "production" ? (
+          <ProductionBoard 
+            projects={projects}
+            actors={actors}
+            shots={shots}
+            clothes={clothes}
+            currentCompany={currentCompany}
+            isAdmin={true}
+            isViewOnly={false}
+            setNotification={setNotification}
+          />
         ) : (
           <div className="space-y-8">
             {editingRental && (
@@ -1743,6 +2197,11 @@ const CompanyPortal = ({ onLogin }: { onLogin: (company: Company) => void }) => 
     }
     
     try {
+      // Ensure the user is signed into Firebase Auth for security rules
+      if (!auth.currentUser) {
+        await signInAnonymously(auth);
+      }
+
       if (mode === 'login') {
         const q = query(collection(db, "companies"), where("name", "==", name));
         const snapshot = await getDocs(q);
@@ -1862,6 +2321,10 @@ function App() {
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [showLogin, setShowLogin] = useState(false);
   const [clothes, setClothes] = useState<ClothingItem[]>([]);
+  const [activeView, setActiveView] = useState<'closet' | 'production'>('closet');
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [actors, setActors] = useState<Actor[]>([]);
+  const [shots, setShots] = useState<Shot[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [showAllRentals, setShowAllRentals] = useState(false);
@@ -1929,6 +2392,15 @@ function App() {
     const checkCompany = async () => {
       setIsCompanyLoading(true);
       try {
+        // Ensure anonymous sign-in for security rules
+        if (!auth.currentUser) {
+          try {
+            await signInAnonymously(auth);
+          } catch (authErr) {
+            console.error("Anonymous auth failed:", authErr);
+          }
+        }
+
         if (companySlug) {
           // Try slug first
           const q = query(collection(db, "companies"), where("slug", "==", companySlug));
@@ -2017,6 +2489,26 @@ function App() {
       }
     );
 
+    const unsubProjects = onSnapshot(
+      query(collection(db, "projects"), where("company_id", "==", currentCompany.id), orderBy("created_at", "desc")),
+      (snapshot) => setProjects(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project))),
+      (error) => console.error("Error projects:", error)
+    );
+
+    // For actors and shots, we might want to fetch them on demand or if we're in production view
+    // For now let's fetch all actors for simplicity if the list is small
+    const unsubActors = onSnapshot(
+      query(collection(db, "actors"), where("company_id", "==", currentCompany.id)),
+      (snapshot) => setActors(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Actor))),
+      (error) => console.error("Error actors:", error)
+    );
+
+    const unsubShots = onSnapshot(
+      query(collection(db, "shots"), where("company_id", "==", currentCompany.id)),
+      (snapshot) => setShots(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Shot))),
+      (error) => console.error("Error shots:", error)
+    );
+
     let unsubRentals = () => {};
     let unsubClients = () => {};
 
@@ -2058,8 +2550,11 @@ function App() {
       unsubCollections();
       unsubRentals();
       unsubClients();
+      unsubProjects();
+      unsubActors();
+      unsubShots();
     };
-  }, [currentCompany, isAdmin, isViewOnly, isCompanyLoading]);
+  }, [currentCompany, isAdmin, isViewOnly, isCompanyLoading, currentUser]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
@@ -2373,10 +2868,25 @@ function App() {
           setShowLogin(true);
         }}
         t={t}
+        activeView={activeView}
+        setActiveView={setActiveView}
       />
 
       <main className="pt-24 pb-24 px-6 max-w-7xl mx-auto">
-        {/* Hero Section */}
+        {activeView === 'production' ? (
+          <ProductionBoard 
+            projects={projects}
+            actors={actors}
+            shots={shots}
+            clothes={clothes}
+            currentCompany={currentCompany}
+            isAdmin={isAdmin}
+            isViewOnly={isViewOnly}
+            setNotification={setNotification}
+          />
+        ) : (
+          <>
+            {/* Hero Section */}
         <section className="mb-20 text-center">
           <div className="flex justify-center mb-6">
             <Logo size={280} withBackground src={currentCompany?.logo_url} />
@@ -2590,6 +3100,8 @@ function App() {
             </div>
           )}
         </section>
+          </>
+        )}
       </main>
 
       {/* Rental Modal */}
@@ -2996,6 +3508,9 @@ function App() {
             clothes={clothes}
             collections={collections}
             clients={clients}
+            projects={projects}
+            actors={actors}
+            shots={shots}
             onReturn={handleReturn}
             onDeleteRental={handleDeleteRental}
             setNotification={setNotification}
