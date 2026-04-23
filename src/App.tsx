@@ -37,6 +37,7 @@ import {
   query, 
   where,
   orderBy,
+  limit,
   Timestamp,
   getDocs,
   getDoc,
@@ -47,18 +48,8 @@ import {
 
 // --- Types ---
 
-interface Company {
-  id: string;
-  name: string;
-  slug: string;
-  password?: string;
-  logo_url?: string;
-  created_at?: any;
-}
-
 interface ClothingItem {
   id: string;
-  company_id: string;
   name: string;
   type: string;
   model: string;
@@ -68,23 +59,33 @@ interface ClothingItem {
   weather: string;
   image_url: string;
   section: string;
+  company_id: string;
+  created_at?: any;
+}
+
+interface Company {
+  id: string;
+  name: string;
+  logo_url?: string;
+  slug: string;
+  password?: string;
   created_at?: any;
 }
 
 interface Collection {
   id: string;
-  company_id: string;
   name: string;
   event_date: string;
   description: string;
   image_url: string;
+  company_id: string;
   itemIds?: string[];
 }
 
 interface Rental {
   id: string;
-  company_id: string;
   clothing_id: string;
+  company_id: string;
   client_id?: string;
   client_name: string;
   client_phone: string;
@@ -464,7 +465,7 @@ const ClothingCard = ({ item, onAddToCollection, onRent, isRented, activeRentals
         <button 
           onClick={(e) => {
             e.stopPropagation();
-            const slug = companySlug || item.company_id;
+            const slug = companySlug || 'default';
             const shareUrl = `${window.location.origin}${window.location.pathname}?view=${slug}&search=${encodeURIComponent(item.name)}`;
             navigator.clipboard.writeText(shareUrl);
             if (setNotification) {
@@ -645,7 +646,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
       } else {
         await addDoc(collection(db, "clothes"), {
           ...newCloth,
-          company_id: currentCompany!.id,
+          company_id: currentCompany?.id,
           created_at: Timestamp.now()
         });
       }
@@ -693,7 +694,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
       } else {
         await addDoc(collection(db, "collections"), {
           ...newCollection,
-          company_id: currentCompany!.id,
+          company_id: currentCompany?.id,
           itemIds: []
         });
       }
@@ -717,6 +718,10 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
 
   const handleAddClient = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!currentCompany?.id) {
+      setNotification({ message: "No company selected. Please login again.", type: "error" });
+      return;
+    }
     try {
       if (editingClient) {
         await updateDoc(doc(db, "clients", editingClient), {
@@ -726,7 +731,7 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
       } else {
         await addDoc(collection(db, "clients"), {
           ...newClient,
-          company_id: currentCompany!.id,
+          company_id: currentCompany?.id,
           created_at: Timestamp.now()
         });
       }
@@ -1348,13 +1353,17 @@ const AdminPanel = ({ onClose, rentals, clothes, collections, clients, onReturn,
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {clients
-                  .filter(client => {
-                    const s = clientSearch.toLowerCase();
-                    return client.full_name.toLowerCase().includes(s) || 
-                           client.phone.toLowerCase().includes(s) ||
-                           (client.company_name && client.company_name.toLowerCase().includes(s));
-                  })
+                    {clients
+                      .filter(client => {
+                        const s = (clientSearch || "").toLowerCase();
+                        const fullName = (client.full_name || "").toLowerCase();
+                        const phone = (client.phone || "").toLowerCase();
+                        const companyName = (client.company_name || "").toLowerCase();
+                        
+                        return fullName.includes(s) || 
+                               phone.includes(s) ||
+                               companyName.includes(s);
+                      })
                   .map(client => (
                   <div key={client.id} className={`p-6 rounded-3xl border group hover:border-black transition-all ${styles.card}`}>
                     <div className="flex items-center gap-4 mb-4">
@@ -1727,6 +1736,12 @@ const CompanyPortal = ({ onLogin }: { onLogin: (company: Company) => void }) => 
     setIsSubmitting(true);
     setError('');
     
+    if (password.length < 4) {
+      setError('Password must be at least 4 characters.');
+      setIsSubmitting(false);
+      return;
+    }
+    
     try {
       if (mode === 'login') {
         const q = query(collection(db, "companies"), where("name", "==", name));
@@ -1759,8 +1774,9 @@ const CompanyPortal = ({ onLogin }: { onLogin: (company: Company) => void }) => 
           onLogin({ id: docRef.id, ...newCompany });
         }
       }
-    } catch (err) {
-      setError('An error occurred. Please try again.');
+    } catch (err: any) {
+      console.error("Company Portal Error:", err);
+      setError(err.message || 'An error occurred. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -1850,6 +1866,7 @@ function App() {
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [showAllRentals, setShowAllRentals] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
+  const [currentCompany, setCurrentCompany] = useState<Company | null>(null);
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
   const [collectionItems, setCollectionItems] = useState<ClothingItem[]>([]);
   const [showCollectionModal, setShowCollectionModal] = useState(false);
@@ -1902,22 +1919,20 @@ function App() {
     return () => unsubAuth();
   }, []);
 
-  const [currentCompany, setCurrentCompany] = useState<Company | null>(null);
   const [isViewOnly, setIsViewOnly] = useState(false);
-  const [isCompanyLoading, setIsCompanyLoading] = useState(true);
+  const [isCompanyLoading, setIsCompanyLoading] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const companySlug = params.get('company') || params.get('view');
     
     const checkCompany = async () => {
-      console.log("Checking company for slug:", companySlug);
+      setIsCompanyLoading(true);
       try {
         if (companySlug) {
           // Try slug first
           const q = query(collection(db, "companies"), where("slug", "==", companySlug));
           const snapshot = await getDocs(q);
-          console.log("Snapshot empty:", snapshot.empty);
           
           if (!snapshot.empty) {
             const companyData = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as Company;
@@ -1933,7 +1948,6 @@ function App() {
             try {
               const docRef = doc(db, "companies", companySlug);
               const docSnap = await getDoc(docRef);
-              console.log("Doc exists:", docSnap.exists());
               if (docSnap.exists()) {
                 const companyData = { id: docSnap.id, ...docSnap.data() } as Company;
                 setCurrentCompany(companyData);
@@ -1945,7 +1959,7 @@ function App() {
                 }
               }
             } catch (e) {
-              console.log("Not a valid ID, skipping fallback");
+              // Not a valid ID
             }
           }
         } else {
@@ -1970,12 +1984,13 @@ function App() {
 
   useEffect(() => {
     // If company is loading, don't do anything yet
-    if (isCompanyLoading) return;
+    if (isCompanyLoading || !currentCompany) return;
 
-    let clothesQuery = query(collection(db, "clothes"), orderBy("created_at", "desc"));
-    if (currentCompany) {
-      clothesQuery = query(collection(db, "clothes"), where("company_id", "==", currentCompany.id), orderBy("created_at", "desc"));
-    }
+    let clothesQuery = query(
+      collection(db, "clothes"), 
+      where("company_id", "==", currentCompany.id),
+      orderBy("created_at", "desc")
+    );
 
     const unsubClothes = onSnapshot(
       clothesQuery, 
@@ -1987,10 +2002,10 @@ function App() {
       }
     );
 
-    let collectionsQuery = query(collection(db, "collections"));
-    if (currentCompany) {
-      collectionsQuery = query(collection(db, "collections"), where("company_id", "==", currentCompany.id));
-    }
+    let collectionsQuery = query(
+      collection(db, "collections"),
+      where("company_id", "==", currentCompany.id)
+    );
 
     const unsubCollections = onSnapshot(
       collectionsQuery, 
@@ -2005,7 +2020,7 @@ function App() {
     let unsubRentals = () => {};
     let unsubClients = () => {};
 
-    if (isAdmin && !isViewOnly && currentCompany) {
+    if (isAdmin && !isViewOnly) {
       unsubRentals = onSnapshot(
         query(
           collection(db, "rentals"), 
@@ -2104,7 +2119,7 @@ function App() {
       ];
 
       for (const item of samples) {
-        await addDoc(collection(db, "clothes"), { ...item, company_id: currentCompany!.id });
+        await addDoc(collection(db, "clothes"), { ...item, company_id: currentCompany?.id });
       }
       setNotification({ message: "Sample data added successfully!", type: "success" });
     } catch (error) {
@@ -2189,6 +2204,7 @@ function App() {
     try {
       const client = clients.find(c => c.id === rentalForm.client_id);
       await addDoc(collection(db, "rentals"), {
+        company_id: currentCompany?.id,
         clothing_id: rentalModal.clothingId,
         clothing_name: rentalModal.clothingName,
         client_id: rentalForm.client_id,
@@ -2196,7 +2212,6 @@ function App() {
         client_phone: client?.phone || "",
         size: rentalForm.size,
         color: rentalForm.color,
-        company_id: currentCompany!.id,
         rental_date: Timestamp.now(),
         status: "active",
         image_url: clothes.find(c => c.id === rentalModal.clothingId)?.image_url || ""
@@ -2254,18 +2269,24 @@ function App() {
   };
 
   const handleLogin = async () => {
-    if (!currentCompany) return;
     setIsSubmitting(true);
     try {
       const trimmedPassword = password.trim();
       
-      // Get the company secret document from Firestore
-      const docRef = doc(db, "company_secrets", currentCompany.id);
-      const docSnap = await getDoc(docRef);
-      
-      if (docSnap.exists()) {
-        const secretData = docSnap.data();
-        if (secretData.password === trimmedPassword) {
+      if (currentCompany && currentCompany.password === trimmedPassword) {
+        setIsAdmin(true);
+        setShowAdminPanel(true);
+        localStorage.setItem('adminLoginTime', Date.now().toString());
+        setNotification({ message: t("Login successful!"), type: "success" });
+        setShowLogin(false);
+        setPassword("");
+      } else if (!currentCompany) {
+        // Fallback for super admin if needed
+        const targetId = 'default_admin';
+        const docRef = doc(db, "company_secrets", targetId);
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists() && docSnap.data().password === trimmedPassword) {
           setIsAdmin(true);
           setShowAdminPanel(true);
           localStorage.setItem('adminLoginTime', Date.now().toString());
@@ -2276,7 +2297,7 @@ function App() {
           setNotification({ message: t("Invalid password."), type: "error" });
         }
       } else {
-        setNotification({ message: t("Company secrets not found."), type: "error" });
+        setNotification({ message: t("Invalid password."), type: "error" });
       }
     } catch (err) {
       console.error("Login error:", err);
@@ -2358,14 +2379,14 @@ function App() {
         {/* Hero Section */}
         <section className="mb-20 text-center">
           <div className="flex justify-center mb-6">
-            <Logo size={280} withBackground src={currentCompany.logo_url} />
+            <Logo size={280} withBackground src={currentCompany?.logo_url} />
           </div>
           <motion.h2 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-4xl md:text-6xl font-black tracking-tighter mb-6"
           >
-            {currentCompany.name.split(' ').slice(0, 2).join(' ')} <span className={styles.accent}>{currentCompany.name.split(' ').slice(2).join(' ') || t('Closet')}</span>
+            {(currentCompany?.name || 'Şan Closet Studio').split(' ').slice(0, 2).join(' ')} <span className={styles.accent}>{(currentCompany?.name || 'Şan Closet Studio').split(' ').slice(2).join(' ') || t('Closet')}</span>
           </motion.h2>
           <motion.p 
             initial={{ opacity: 0, y: 20 }}
@@ -2373,14 +2394,14 @@ function App() {
             transition={{ delay: 0.1 }}
             className={`text-xl max-w-2xl mx-auto ${styles.accent}`}
           >
-            {currentCompany.name}: {t('Your ultimate wardrobe management system. Organize your clothes, create collections for events, and always look your best.')}
+            {currentCompany?.name || 'Şan Closet Studio'}: {t('Your ultimate wardrobe management system. Organize your clothes, create collections for events, and always look your best.')}
           </motion.p>
           
           {isAdmin && !isViewOnly && (
             <div className="mt-8 flex justify-center">
               <button 
                 onClick={() => {
-                  const shareUrl = `${window.location.origin}${window.location.pathname}?view=${currentCompany.slug}`;
+                  const shareUrl = `${window.location.origin}${window.location.pathname}?view=${currentCompany?.slug || 'default'}`;
                   navigator.clipboard.writeText(shareUrl);
                   setNotification({ message: "Share link copied to clipboard!", type: "success" });
                 }}
@@ -2613,7 +2634,10 @@ function App() {
 
                   <div className="max-h-48 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
                     {clients
-                      .filter(c => c.full_name.toLowerCase().includes(clientSearch.toLowerCase()) || c.phone.includes(clientSearch))
+                      .filter(c => 
+                        (c.full_name || "").toLowerCase().includes((clientSearch || "").toLowerCase()) || 
+                        (c.phone || "").includes(clientSearch || "")
+                      )
                       .map(client => (
                       <button
                         key={client.id}
@@ -2635,9 +2659,15 @@ function App() {
                         {rentalForm.client_id === client.id && <Check size={16} className="ml-auto" />}
                       </button>
                     ))}
-                    {clients.length === 0 && (
-                      <div className={`text-center py-4 text-sm ${styles.muted}`}>
-                        No clients found. Add them in Admin Panel.
+                    {clients
+                      .filter(c => 
+                        (c.full_name || "").toLowerCase().includes((clientSearch || "").toLowerCase()) || 
+                        (c.phone || "").includes(clientSearch || "")
+                      ).length === 0 && (
+                      <div className={`text-center py-8 rounded-2xl border-2 border-dashed ${styles.muted} border-zinc-200/50`}>
+                        <User className="mx-auto mb-2 opacity-20" size={24} />
+                        <p className="text-xs font-medium">No clients found matching your search.</p>
+                        <p className="text-[10px] mt-1 opacity-60">Add clients in the Admin Panel if they are missing.</p>
                       </div>
                     )}
                   </div>

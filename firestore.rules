@@ -2,8 +2,6 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     // ===============================================================
-    // Assumed Data Model
-    // ===============================================================
     //
     // Collection: companies
     // Fields: name, slug, password, logo_url, created_at
@@ -66,36 +64,34 @@ service cloud.firestore {
     match /companies/{companyId} {
       allow read: if true;
       allow create: if isValidCompany(request.resource.data);
-      allow update: if isSuperAdmin() || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['logo_url', 'name', 'slug']));
-      allow delete: if isSuperAdmin();
-    }
-
-    match /company_secrets/{companyId} {
-      allow read, write: if isSuperAdmin();
+      allow update, delete: if isSuperAdmin();
     }
 
     match /clothes/{clothId} {
-      allow read: if true; // Publicly viewable for "view only" mode
-      allow write: if isSuperAdmin() || (isAuthenticated() && request.resource.data.company_id != null); 
-      // Note: In a real app, we'd verify the user belongs to the company.
-      // For this prototype, we'll allow authenticated writes if company_id is present.
+      allow read: if true;
+      allow write: if isAuthenticated();
     }
 
     match /collections/{collectionId} {
       allow read: if true;
-      allow write: if isSuperAdmin() || (isAuthenticated() && request.resource.data.company_id != null);
+      allow write: if isAuthenticated();
     }
 
     match /clients/{clientId} {
-      allow read: if isSuperAdmin() || isAuthenticated();
-      allow write: if isSuperAdmin() || (isAuthenticated() && request.resource.data.company_id != null);
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
     }
 
     match /rentals/{rentalId} {
-      allow read: if isSuperAdmin() || isAuthenticated();
-      allow write: if isSuperAdmin() || (isAuthenticated() && request.resource.data.company_id != null);
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
     }
     
+    match /company_secrets/{secretId} {
+      allow read: if true;
+      allow write: if isSuperAdmin();
+    }
+
     match /test/connection {
       allow read: if true;
     }
