@@ -675,6 +675,7 @@ const ProductionBoard = ({
   shots, 
   clothes,
   currentCompany,
+  companies,
   isAdmin,
   isViewOnly,
   setNotification
@@ -684,6 +685,7 @@ const ProductionBoard = ({
   shots: Shot[], 
   clothes: ClothingItem[],
   currentCompany: Company | null,
+  companies?: Company[],
   isAdmin: boolean,
   isViewOnly: boolean,
   setNotification: (n: {message: string, type: 'success' | 'error' | 'info'}) => void
@@ -707,7 +709,7 @@ const ProductionBoard = ({
   } | null>(null);
   const pdfRef = useRef<HTMLDivElement>(null);
 
-  const [newProject, setNewProject] = useState({ name: "", description: "", user_name: "", user_phone: "" });
+  const [newProject, setNewProject] = useState({ name: "", description: "", user_name: "", user_phone: "", company_id: "" });
   const [newActor, setNewActor] = useState({ 
     name: "", weight: "", height: "", shoulder_size: "", waist_size: "" 
   });
@@ -718,7 +720,11 @@ const ProductionBoard = ({
 
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentCompany) return;
+    const finalCompanyId = currentCompany ? currentCompany.id : newProject.company_id;
+    if (!finalCompanyId) {
+      setNotification({ message: "Please select a company.", type: "error" });
+      return;
+    }
     setIsSubmitting(true);
     try {
       if (editingProject) {
@@ -727,6 +733,7 @@ const ProductionBoard = ({
           description: newProject.description,
           user_name: newProject.user_name,
           user_phone: newProject.user_phone,
+          company_id: finalCompanyId,
           updated_at: Timestamp.now()
         });
         setNotification({ message: "Project updated successfully!", type: "success" });
@@ -736,12 +743,12 @@ const ProductionBoard = ({
           description: newProject.description,
           user_name: newProject.user_name,
           user_phone: newProject.user_phone,
-          company_id: currentCompany.id,
+          company_id: finalCompanyId,
           created_at: Timestamp.now()
         });
         setNotification({ message: "Project created successfully!", type: "success" });
       }
-      setNewProject({ name: "", description: "", user_name: "", user_phone: "" });
+      setNewProject({ name: "", description: "", user_name: "", user_phone: "", company_id: "" });
       setShowAddProject(false);
       setEditingProject(null);
     } catch (err) {
@@ -810,7 +817,8 @@ const ProductionBoard = ({
       name: project.name,
       description: project.description,
       user_name: project.user_name || "",
-      user_phone: project.user_phone || ""
+      user_phone: project.user_phone || "",
+      company_id: project.company_id || ""
     });
     setEditingProject(project);
     setShowAddProject(true);
@@ -840,7 +848,9 @@ const ProductionBoard = ({
 
   const handleAddActor = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedProject || !currentCompany) return;
+    if (!selectedProject) return;
+    const finalCompanyId = currentCompany ? currentCompany.id : selectedProject.company_id;
+    if (!finalCompanyId) return;
     setIsSubmitting(true);
     try {
       if (editingActor) {
@@ -855,7 +865,7 @@ const ProductionBoard = ({
       } else {
         await addDoc(collection(db, "actors"), {
           ...newActor,
-          company_id: currentCompany.id,
+          company_id: finalCompanyId,
           project_id: selectedProject.id,
           created_at: Timestamp.now()
         });
@@ -884,7 +894,9 @@ const ProductionBoard = ({
   };
 
   const handleAddShot = async (actorId: string, shotNumber: number, itemIds: string[]) => {
-    if (!selectedProject || !currentCompany) return;
+    if (!selectedProject) return;
+    const finalCompanyId = currentCompany ? currentCompany.id : selectedProject.company_id;
+    if (!finalCompanyId) return;
     try {
       if (editingShot) {
         await updateDoc(doc(db, "shots", editingShot.id), {
@@ -895,7 +907,7 @@ const ProductionBoard = ({
         setNotification({ message: `Shot ${shotNumber} updated!`, type: "success" });
       } else {
         await addDoc(collection(db, "shots"), {
-          company_id: currentCompany.id,
+          company_id: finalCompanyId,
           project_id: selectedProject.id,
           actor_id: actorId,
           shot_number: shotNumber,
@@ -1551,7 +1563,7 @@ const ProductionBoard = ({
                 onClick={() => {
                   setShowAddProject(false);
                   setEditingProject(null);
-                  setNewProject({ name: "", description: "", user_name: "", user_phone: "" });
+                  setNewProject({ name: "", description: "", user_name: "", user_phone: "", company_id: "" });
                 }} 
                 className={`w-12 h-12 rounded-full flex items-center justify-center border shadow-sm transition-all active:scale-95 ${styles.secondary}`}
               >
@@ -1594,6 +1606,23 @@ const ProductionBoard = ({
                     placeholder="e.g. Summer Collection Shoot" 
                   />
                 </div>
+
+                {!currentCompany && companies && (
+                  <div className="space-y-2">
+                    <label className="block text-[10px] font-black uppercase tracking-widest opacity-50 ml-1">{t('Assign to Company')}</label>
+                    <select
+                      required
+                      value={newProject.company_id}
+                      onChange={e => setNewProject({...newProject, company_id: e.target.value})}
+                      className={`w-full p-5 rounded-3xl border-2 transition-all focus:border-blue-500 outline-none text-lg font-bold appearance-none ${styles.input}`}
+                    >
+                      <option value="">{t('Select Company')}</option>
+                      {companies.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <label className="block text-[10px] font-black uppercase tracking-widest opacity-50 ml-1">{t('Production Description')}</label>
@@ -3023,6 +3052,8 @@ function App() {
   const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [allClothes, setAllClothes] = useState<ClothingItem[]>([]);
   const [allRentals, setAllRentals] = useState<Rental[]>([]);
+  const [allActors, setAllActors] = useState<Actor[]>([]);
+  const [allShots, setAllShots] = useState<Shot[]>([]);
   const [allVisits, setAllVisits] = useState<any[]>([]);
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [showLogin, setShowLogin] = useState(false);
@@ -3231,6 +3262,14 @@ function App() {
       setAllRentals(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Rental)));
     });
 
+    const unsubAllActors = onSnapshot(collection(db, "actors"), (snapshot) => {
+      setAllActors(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Actor)));
+    });
+
+    const unsubAllShots = onSnapshot(collection(db, "shots"), (snapshot) => {
+      setAllShots(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Shot)));
+    });
+
     const unsubAllVisits = onSnapshot(collection(db, "visits"), (snapshot) => {
       setAllVisits(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
@@ -3240,6 +3279,8 @@ function App() {
       unsubAllProjects();
       unsubAllClothes();
       unsubAllRentals();
+      unsubAllActors();
+      unsubAllShots();
       unsubAllVisits();
     };
   }, [isSuperAdmin]);
@@ -3741,11 +3782,26 @@ function App() {
             projects={allProjects} 
             clothes={allClothes} 
             rentals={allRentals}
+            actors={allActors}
+            shots={allShots}
             visits={allVisits}
             onDeleteProject={handleGlobalDeleteProject}
             onDeleteCompany={handleGlobalDeleteCompany}
             t={t}
             styles={styles}
+            renderProductionBoard={() => (
+              <ProductionBoard 
+                projects={allProjects}
+                actors={allActors}
+                shots={allShots}
+                clothes={allClothes}
+                currentCompany={null}
+                companies={allCompanies}
+                isAdmin={true}
+                isViewOnly={false}
+                setNotification={setNotification}
+              />
+            )}
           />
         </main>
       </div>

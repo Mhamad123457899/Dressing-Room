@@ -24,22 +24,26 @@ import {
   FileText,
   Maximize2,
   ChevronRight,
-  Layers
+  Layers,
+  Plus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { db } from '../firebase';
-import { doc, deleteDoc } from 'firebase/firestore';
+import { doc, deleteDoc, addDoc, collection, Timestamp, arrayUnion, updateDoc } from 'firebase/firestore';
 
 interface SuperAdminPanelProps {
   companies: any[];
   projects: any[];
   clothes: any[];
   rentals: any[];
+  actors?: any[];
+  shots?: any[];
   visits: any[];
   onDeleteProject: (id: string) => void;
   onDeleteCompany: (id: string) => void;
   t: any;
   styles: any;
+  renderProductionBoard?: () => React.ReactNode;
 }
 
 export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({ 
@@ -47,18 +51,38 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
   projects, 
   clothes, 
   rentals,
+  actors = [],
+  shots = [],
   visits,
   onDeleteProject,
   onDeleteCompany,
   t,
-  styles
+  styles,
+  renderProductionBoard
 }) => {
-  const [activeTab, setActiveTab] = useState<'companies' | 'projects' | 'clothes' | 'rentals'>('companies');
+  const [activeTab, setActiveTab] = useState<'companies' | 'production_board' | 'clothes' | 'rentals'>('companies');
   const [search, setSearch] = useState('');
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [selectedActorName, setSelectedActorName] = useState<string | null>(null);
   const [fullscreenClothingId, setFullscreenClothingId] = useState<string | null>(null);
+  const [showAddProject, setShowAddProject] = useState(false);
+  const [showAddActor, setShowAddActor] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [newProject, setNewProject] = useState({
+    name: '',
+    description: '',
+    user_name: '',
+    user_phone: '',
+    company_id: ''
+  });
+  const [newActor, setNewActor] = useState({
+    name: '',
+    phone: '',
+    height: '',
+    chest: '',
+    waist: ''
+  });
 
   const formatSessionTime = (startTime: any) => {
     if (!startTime) return 'N/A';
@@ -84,9 +108,11 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
   const projectClothes = selectedProject ? clothes.filter(c => selectedProject.clothes_ids?.includes(c.id)) : [];
   const projectRentals = rentals.filter(r => r.project_id === selectedProjectId);
   const projectCompany = companies.find(c => c.id === selectedProject?.company_id);
+  const projectActorsData = selectedProjectId ? actors.filter(a => a.project_id === selectedProjectId) : [];
+  const projectShotsData = selectedProjectId ? shots.filter(s => s.project_id === selectedProjectId) : [];
 
-  // Group project rentals by actor (user_name)
-  const projectActors = projectRentals.reduce((acc: any, rental: any) => {
+  // Group project rentals by actor (user_name) - Fallback if actors collection is empty
+  const derivedActorsFromRentals = projectRentals.reduce((acc: any, rental: any) => {
     const actorName = rental.user_name || 'Generic Actor';
     if (!acc[actorName]) {
       acc[actorName] = {
@@ -100,8 +126,19 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
     return acc;
   }, {});
 
-  const actorsList = Object.values(projectActors);
-  const selectedActorRentals = selectedActorName ? projectRentals.filter(r => (r.user_name || 'Generic Actor') === selectedActorName) : [];
+  const actorsList = projectActorsData.length > 0 
+    ? projectActorsData.map(a => ({ 
+        id: a.id, 
+        name: a.name, 
+        clothesCount: projectRentals.filter(r => r.actor_id === a.id).length || 0 
+      }))
+    : Object.values(derivedActorsFromRentals).map((a: any) => ({ ...a, id: a.name }));
+    
+  const selectedActor = selectedActorName ? (projectActorsData.find(a => a.name === selectedActorName) || { name: selectedActorName }) : null;
+  const selectedActorRentals = selectedActorName 
+    ? projectRentals.filter(r => (r.user_name || r.actor_name || 'Generic Actor') === selectedActorName || r.actor_id === selectedActor?.id) 
+    : [];
+  const selectedActorShots = selectedActor?.id ? projectShotsData.filter(s => s.actor_id === selectedActor.id) : [];
 
   useEffect(() => {
     if (selectedCompanyId || selectedProjectId || selectedActorName || fullscreenClothingId) {
@@ -117,6 +154,44 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
     };
   }, [selectedCompanyId, selectedProjectId]);
 
+  const handleCreateProject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newProject.name || !newProject.company_id) return;
+    setIsSubmitting(true);
+    try {
+      await addDoc(collection(db, "projects"), {
+        ...newProject,
+        created_at: Timestamp.now(),
+        clothes_ids: []
+      });
+      setShowAddProject(false);
+      setNewProject({ name: '', description: '', user_name: '', user_phone: '', company_id: '' });
+    } catch (err) {
+      console.error("Failed to create project:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCreateActor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newActor.name || !selectedProjectId) return;
+    setIsSubmitting(true);
+    try {
+      await addDoc(collection(db, "actors"), {
+        ...newActor,
+        project_id: selectedProjectId,
+        company_id: selectedProject?.company_id,
+        created_at: Timestamp.now()
+      });
+      setShowAddActor(false);
+      setNewActor({ name: '', phone: '', height: '', chest: '', waist: '' });
+    } catch (err) {
+      console.error("Failed to create actor:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
   const handleGlobalDeleteClothing = async (clothingId: string) => {
     if (!confirm("Are you sure you want to delete this clothing item globally?")) return;
     try {
@@ -301,17 +376,17 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
         <div className="w-full max-w-xl">
           <h2 className="text-4xl sm:text-5xl font-black tracking-tighter uppercase italic mb-4">Command <span className={styles.accent}>Center</span></h2>
           <div className="flex flex-wrap gap-2">
-            {['companies', 'projects', 'clothes', 'rentals'].map((tab) => (
+            {['companies', 'production_board', 'clothes', 'rentals'].map((tab) => (
               <button 
                 key={tab}
                 onClick={() => setActiveTab(tab as any)}
                 className={`px-4 sm:px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-3 border-2 ${activeTab === tab ? 'bg-black text-white border-black shadow-2xl scale-105' : 'bg-transparent border-black/10 hover:border-black/30 opacity-60 hover:opacity-100'}`}
               >
                 {tab === 'companies' && <Users size={14} />}
-                {tab === 'projects' && <Activity size={14} />}
+                {tab === 'production_board' && <Activity size={14} />}
                 {tab === 'clothes' && <ShoppingBag size={14} />}
                 {tab === 'rentals' && <Package size={14} />}
-                <span className="hidden sm:inline">{tab}</span>
+                <span className="hidden sm:inline">{tab === 'production_board' ? 'Production Board' : tab}</span>
               </button>
             ))}
           </div>
@@ -399,8 +474,22 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
           </div>
         )}
 
-        {activeTab === 'projects' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {activeTab === 'production_board' && (
+          renderProductionBoard ? renderProductionBoard() : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <button 
+              onClick={() => setShowAddProject(true)}
+              className="p-10 rounded-[3rem] border-4 border-dashed border-zinc-200 bg-zinc-50/50 hover:bg-white hover:border-black transition-all group flex flex-col items-center justify-center text-center space-y-4 min-h-[300px]"
+            >
+              <div className="w-20 h-20 rounded-full bg-white shadow-xl flex items-center justify-center text-zinc-400 group-hover:bg-black group-hover:text-white transition-all scale-110">
+                <Plus size={40} />
+              </div>
+              <div>
+                <p className="text-xl font-black tracking-tighter uppercase italic text-black">New Board</p>
+                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1 italic">Initialize production</p>
+              </div>
+            </button>
+
             {filteredProjects.map(project => {
               const company = companies.find(c => c.id === project.company_id);
               return (
@@ -451,6 +540,7 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
               );
             })}
           </div>
+          )
         )}
 
         {activeTab === 'clothes' && (
@@ -759,95 +849,109 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
             </div>
 
             <div className="max-w-7xl mx-auto px-4 sm:px-8 py-8 sm:py-16">
+              {/* Project Status Stats */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-16">
+                {[
+                  { label: 'Cast Size', value: actorsList.length, icon: Users, color: 'bg-blue-50 text-blue-600' },
+                  { label: 'Total Assets', value: projectClothes.length, icon: ShoppingBag, color: 'bg-purple-50 text-purple-600' },
+                  { label: 'Active Rentals', value: projectRentals.length, icon: Package, color: 'bg-zinc-100 text-zinc-900' },
+                  { label: 'Waitlist', value: '0', icon: Clock, color: 'bg-zinc-100 text-zinc-400' },
+                ].map((stat, i) => (
+                  <div key={i} className="p-6 rounded-[2.5rem] bg-white border-2 border-zinc-100 shadow-sm">
+                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center mb-4 ${stat.color}`}>
+                      <stat.icon size={20} />
+                    </div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1">{stat.label}</p>
+                    <p className="text-2xl font-black tracking-tighter text-black">{stat.value}</p>
+                  </div>
+                ))}
+              </div>
+
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 sm:gap-16">
                 
                 {/* Information Sidebar */}
                 <div className="lg:col-span-4 space-y-8 sm:space-y-12">
                   <section>
                     <h3 className="text-[10px] font-black uppercase tracking-[0.3em] mb-6 sm:mb-8 text-zinc-400 border-b pb-4">Production Intel</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
-                      {[
-                        { label: 'Client / Actor', value: selectedProject.user_name, icon: UserIcon, color: 'text-zinc-900' },
-                        { label: 'Contact Node', value: selectedProject.user_phone, icon: Phone, color: 'text-zinc-900' },
-                        { label: 'Asset Load', value: `${projectClothes.length} Items`, icon: ShoppingBag, color: 'text-blue-600' },
-                        { label: 'Rental Count', value: projectRentals.length, icon: Package, color: 'text-purple-600' },
-                      ].map((stat, i) => (
-                        <div key={i} className="flex items-center gap-5 p-5 sm:p-6 rounded-[2.5rem] bg-white border-2 border-zinc-100 shadow-sm">
-                          <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-zinc-50 border border-zinc-100 flex items-center justify-center flex-shrink-0 ${stat.color}`}>
-                            <stat.icon size={18} className="sm:w-5 sm:h-5" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1 truncate">{stat.label}</p>
-                            <p className="text-base sm:text-lg font-black tracking-tight text-black truncate">{stat.value}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-
-                  <section>
-                    <h3 className="text-[10px] font-black uppercase tracking-[0.3em] mb-8 text-zinc-400 border-b pb-4">Temporal Signature</h3>
-                    <div className="p-10 rounded-[3rem] bg-black text-white shadow-2xl relative overflow-hidden">
-                      <div className="relative z-10 space-y-8">
-                        <div>
-                          <p className="text-[9px] font-black uppercase text-zinc-500 mb-2 tracking-widest">Created At</p>
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-xl bg-white/10">
-                              <Calendar size={16} />
+                    <div className="space-y-4">
+                      <div className="p-8 rounded-[3rem] bg-white border-2 border-zinc-100 shadow-sm relative overflow-hidden group">
+                        <div className="relative z-10">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-6 text-center">Assigned Client</p>
+                          <div className="flex flex-col items-center text-center">
+                            <div className="w-20 h-20 rounded-full bg-zinc-50 border-4 border-white shadow-xl flex items-center justify-center mb-4 text-black italic font-black text-3xl">
+                              {selectedProject.user_name?.charAt(0) || 'P'}
                             </div>
-                            <p className="text-lg font-bold">{selectedProject.created_at ? new Date(selectedProject.created_at.toDate()).toLocaleDateString() : 'Unknown Epoch'}</p>
+                            <h4 className="text-xl font-black uppercase tracking-tighter mb-1">{selectedProject.user_name}</h4>
+                            <p className="text-xs font-bold text-zinc-500 mb-6">{selectedProject.user_phone}</p>
+                            
+                            <div className="w-full flex items-center gap-2 px-4 py-2 bg-zinc-50 rounded-xl border border-zinc-100">
+                              <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                              <span className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Contact Active</span>
+                            </div>
                           </div>
                         </div>
-                        <div>
-                          <p className="text-[9px] font-black uppercase text-zinc-500 mb-2 tracking-widest">Time Registered</p>
-                          <p className="text-sm font-medium text-zinc-300">{selectedProject.created_at ? new Date(selectedProject.created_at.toDate()).toLocaleTimeString() : 'N/A'}</p>
+                        <UserIcon className="absolute -bottom-4 -left-4 text-zinc-50 w-24 h-24 -rotate-12" />
+                      </div>
+
+                      <div className="p-8 rounded-[3rem] border-2 border-dashed border-zinc-200 text-center space-y-4">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-zinc-300 italic">Timeline Protocols</p>
+                        <div className="flex justify-between items-center px-4">
+                          <span className="text-[10px] font-bold text-zinc-400">REGISTERED</span>
+                          <span className="text-[10px] font-black text-black">{selectedProject.created_at ? new Date(selectedProject.created_at.toDate()).toLocaleDateString() : 'N/A'}</span>
+                        </div>
+                         <div className="flex justify-between items-center px-4">
+                          <span className="text-[10px] font-bold text-zinc-400">LAST SYNC</span>
+                          <span className="text-[10px] font-black text-black">{new Date().toLocaleDateString()}</span>
                         </div>
                       </div>
-                      <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-white/5 rounded-full blur-2xl" />
                     </div>
                   </section>
                 </div>
 
                 {/* Main Content Area */}
-        <div className="lg:col-span-8 space-y-12 sm:space-y-20">
-          <section>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 sm:mb-10 gap-4">
-              <div>
-                <h3 className="text-3xl sm:text-4xl font-black uppercase italic tracking-tighter text-black">Cast Hub</h3>
-                <p className="text-[10px] sm:text-xs text-zinc-500 font-bold uppercase tracking-widest mt-2">Actors and allocated costumes</p>
-              </div>
-              <div className="px-5 sm:px-6 py-2 bg-black text-white rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-widest self-start sm:self-center">
-                {actorsList.length} TOTAL
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {(actorsList as any[]).map((actor: any) => (
-                <button 
-                  key={actor.name}
-                  onClick={() => setSelectedActorName(actor.name)}
-                  className="flex items-center gap-6 p-8 rounded-[2.5rem] border-2 border-zinc-100 bg-white hover:border-black transition-all group shadow-sm hover:shadow-xl text-left"
-                >
-                  <div className="w-16 h-16 rounded-3xl bg-zinc-50 flex items-center justify-center text-zinc-400 group-hover:bg-black group-hover:text-white transition-all transform group-hover:rotate-6 flex-shrink-0">
-                    <UserIcon size={32} />
-                  </div>
-                  <div className="min-w-0">
-                    <h4 className="text-xl font-black tracking-tighter uppercase text-black mb-1 truncate">{actor.name}</h4>
-                    <div className="flex items-center gap-2">
-                      <span className="px-3 py-1 bg-zinc-100 rounded-lg text-[10px] font-black uppercase text-zinc-500">{actor.clothesCount} Costumes</span>
+                <div className="lg:col-span-8 space-y-12 sm:space-y-20">
+                  <section>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 sm:mb-10 gap-4">
+                      <div>
+                        <h3 className="text-3xl sm:text-4xl font-black uppercase italic tracking-tighter text-black">Cast Hub</h3>
+                        <p className="text-[10px] sm:text-xs text-zinc-500 font-bold uppercase tracking-widest mt-2">Verified actors and character mapping</p>
+                      </div>
+                      <button 
+                        onClick={() => setShowAddActor(true)}
+                        className="px-6 py-3 bg-black text-white text-[10px] font-black uppercase tracking-widest rounded-2xl hover:scale-105 active:scale-95 transition-all shadow-xl flex items-center gap-2"
+                      >
+                        <Plus size={14} /> Add Actor
+                      </button>
                     </div>
-                  </div>
-                  <ChevronRight size={24} className="ml-auto text-zinc-300 group-hover:text-black group-hover:translate-x-1 transition-all" />
-                </button>
-              ))}
-              {actorsList.length === 0 && (
-                <div className="col-span-full py-32 rounded-[3.5rem] border-4 border-dashed border-zinc-200 bg-zinc-100/50 flex flex-col items-center justify-center text-center">
-                  <Users size={48} className="text-zinc-200 mb-6" />
-                  <p className="text-sm font-bold text-zinc-400 italic">No actors registered in this production pipeline</p>
-                </div>
-              )}
-            </div>
-          </section>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      {(actorsList as any[]).map((actor: any) => (
+                        <button 
+                          key={actor.name}
+                          onClick={() => setSelectedActorName(actor.name)}
+                          className="flex items-center gap-6 p-8 rounded-[2.5rem] border-2 border-zinc-100 bg-white hover:border-black transition-all group shadow-sm hover:shadow-xl text-left"
+                        >
+                          <div className="w-16 h-16 rounded-3xl bg-zinc-50 flex items-center justify-center text-zinc-400 group-hover:bg-black group-hover:text-white transition-all transform group-hover:rotate-6 flex-shrink-0">
+                            <UserIcon size={32} />
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="text-xl font-black tracking-tighter uppercase text-black mb-1 truncate">{actor.name}</h4>
+                            <div className="flex items-center gap-2">
+                              <span className="px-3 py-1 bg-zinc-100 rounded-lg text-[10px] font-black uppercase text-zinc-500">{actor.clothesCount} COSTUMES</span>
+                              <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-black uppercase">ACTIVE</span>
+                            </div>
+                          </div>
+                          <ChevronRight size={24} className="ml-auto text-zinc-300 group-hover:text-black group-hover:translate-x-1 transition-all" />
+                        </button>
+                      ))}
+                      {actorsList.length === 0 && (
+                        <div className="col-span-full py-32 rounded-[3.5rem] border-4 border-dashed border-zinc-200 bg-zinc-100/50 flex flex-col items-center justify-center text-center">
+                          <Users size={48} className="text-zinc-200 mb-6" />
+                          <p className="text-sm font-bold text-zinc-400 italic">No actors found in this production's roster</p>
+                        </div>
+                      )}
+                    </div>
+                  </section>
 
           <section>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 sm:mb-10 border-t pt-12 sm:pt-20 gap-4">
@@ -911,6 +1015,67 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
             </div>
 
             <div className="max-w-7xl mx-auto px-4 sm:px-8 py-16">
+              {/* Profile Header Stats */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-16">
+                <div className="p-6 rounded-[2.5rem] bg-white border-2 border-zinc-100 shadow-sm">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1">Total Items</p>
+                  <p className="text-2xl font-black tracking-tighter text-black">{selectedActorRentals.length}</p>
+                </div>
+                <div className="p-6 rounded-[2.5rem] bg-white border-2 border-zinc-100 shadow-sm">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1">Production Shots</p>
+                  <p className="text-2xl font-black tracking-tighter text-black">{selectedActorShots.length}</p>
+                </div>
+                <div className="p-6 rounded-[2.5rem] bg-white border-2 border-zinc-100 shadow-sm">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1">Measurements</p>
+                  <p className="text-2xl font-black tracking-tighter text-black">{selectedActor?.height || 'N/A'}</p>
+                </div>
+                <div className="p-6 rounded-[2.5rem] bg-white border-2 border-zinc-100 shadow-sm">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1">Role Type</p>
+                  <p className="text-2xl font-black tracking-tighter text-black">Talent</p>
+                </div>
+              </div>
+
+              {/* Shots Section */}
+              {selectedActorShots.length > 0 && (
+                <div className="mb-20">
+                  <div className="flex items-center gap-4 mb-10">
+                    <Layers className="text-black" size={24} />
+                    <h3 className="text-2xl font-black uppercase italic tracking-tighter text-black">Allocated Shots</h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {selectedActorShots.map(shot => (
+                      <div key={shot.id} className="p-8 rounded-[3rem] bg-white border-2 border-zinc-100 shadow-sm">
+                        <div className="flex justify-between items-start mb-8">
+                          <div>
+                            <span className="px-4 py-1.5 bg-black text-white text-[10px] font-black uppercase rounded-lg mb-2 inline-block">
+                              SCENE: {shot.scene_number || '01'}
+                            </span>
+                            <h4 className="text-xl font-black uppercase tracking-tighter">{shot.name}</h4>
+                          </div>
+                          <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest italic">{shot.day || 'Day 1'}</span>
+                        </div>
+                        
+                        <div className="grid grid-cols-3 gap-3">
+                          {shot.clothing_item_ids?.map((id: string) => {
+                            const item = clothes.find(c => c.id === id);
+                            return item ? (
+                              <div key={id} className="aspect-[3/4] rounded-2xl overflow-hidden bg-zinc-100 border-2 border-white shadow-sm ring-1 ring-zinc-100 cursor-pointer" onClick={() => setFullscreenClothingId(id)}>
+                                <img src={item.image_url} className="w-full h-full object-cover" />
+                              </div>
+                            ) : null;
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center gap-4 mb-10">
+                <ShoppingBag className="text-black" size={24} />
+                <h3 className="text-2xl font-black uppercase italic tracking-tighter text-black">Individual Assets</h3>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {selectedActorRentals.map(rental => {
                   const item = clothes.find(c => c.id === rental.clothing_id);
@@ -956,6 +1121,189 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
                 })}
               </div>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showAddProject && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[1000] bg-black/60 backdrop-blur-md flex items-center justify-center p-6"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="w-full max-w-2xl bg-white rounded-[3.5rem] p-10 shadow-2xl relative overflow-hidden"
+            >
+              <div className="flex justify-between items-center mb-10">
+                <h3 className="text-3xl font-black uppercase tracking-tighter italic">Initialize <span className="text-zinc-400">Board</span></h3>
+                <button onClick={() => setShowAddProject(false)} className="p-4 rounded-2xl hover:bg-zinc-100 transition-all border-2 border-transparent active:border-black">
+                  <X size={24} />
+                </button>
+              </div>
+              
+              <form onSubmit={handleCreateProject} className="space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-4">Project Identity</label>
+                    <input 
+                      required
+                      value={newProject.name}
+                      onChange={e => setNewProject({...newProject, name: e.target.value})}
+                      placeholder="Production Name"
+                      className="w-full px-8 py-5 bg-zinc-50 border-2 border-zinc-100 rounded-[2rem] focus:bg-white focus:border-black outline-none transition-all font-bold text-lg"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-4">Assign Company</label>
+                    <select 
+                      required
+                      value={newProject.company_id}
+                      onChange={e => setNewProject({...newProject, company_id: e.target.value})}
+                      className="w-full px-8 py-5 bg-zinc-50 border-2 border-zinc-100 rounded-[2rem] focus:bg-white focus:border-black outline-none transition-all font-bold text-lg appearance-none"
+                    >
+                      <option value="">Select Producer</option>
+                      {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-4">Internal Client</label>
+                    <input 
+                      required
+                      value={newProject.user_name}
+                      onChange={e => setNewProject({...newProject, user_name: e.target.value})}
+                      placeholder="Client Name"
+                      className="w-full px-8 py-5 bg-zinc-50 border-2 border-zinc-100 rounded-[2rem] focus:bg-white focus:border-black outline-none transition-all font-bold text-lg"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-4">Secure Contact</label>
+                    <input 
+                      required
+                      value={newProject.user_phone}
+                      onChange={e => setNewProject({...newProject, user_phone: e.target.value})}
+                      placeholder="Phone String"
+                      className="w-full px-8 py-5 bg-zinc-50 border-2 border-zinc-100 rounded-[2rem] focus:bg-white focus:border-black outline-none transition-all font-bold text-lg"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-4">Scope Intel</label>
+                  <textarea 
+                    value={newProject.description}
+                    onChange={e => setNewProject({...newProject, description: e.target.value})}
+                    placeholder="Brief description of the production scope..."
+                    className="w-full px-8 py-5 bg-zinc-50 border-2 border-zinc-100 rounded-[2.5rem] focus:bg-white focus:border-black outline-none transition-all font-bold text-lg h-32 resize-none"
+                  />
+                </div>
+
+                <button 
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full py-8 bg-black text-white rounded-full font-black uppercase tracking-[0.4em] text-[10px] shadow-2xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-4"
+                >
+                  {isSubmitting ? 'Decrypting Protocols...' : 'Confirm Production Board'}
+                  <Activity size={18} />
+                </button>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showAddActor && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[1000] bg-black/60 backdrop-blur-md flex items-center justify-center p-6"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="w-full max-w-xl bg-white rounded-[3.5rem] p-10 shadow-2xl"
+            >
+              <div className="flex justify-between items-center mb-10">
+                <h3 className="text-3xl font-black uppercase tracking-tighter italic">Add <span className="text-zinc-400">Actor</span></h3>
+                <button onClick={() => setShowAddActor(false)} className="p-4 rounded-2xl hover:bg-zinc-100 transition-all border-2 border-transparent active:border-black">
+                  <X size={24} />
+                </button>
+              </div>
+              
+              <form onSubmit={handleCreateActor} className="space-y-8">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-4">Full Identity</label>
+                  <input 
+                    required
+                    value={newActor.name}
+                    onChange={e => setNewActor({...newActor, name: e.target.value})}
+                    placeholder="Talent Name"
+                    className="w-full px-8 py-5 bg-zinc-50 border-2 border-zinc-100 rounded-[2rem] focus:bg-white focus:border-black outline-none transition-all font-bold text-lg"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-4">Contact Logic</label>
+                    <input 
+                      value={newActor.phone}
+                      onChange={e => setNewActor({...newActor, phone: e.target.value})}
+                      placeholder="Phone"
+                      className="w-full px-8 py-5 bg-zinc-50 border-2 border-zinc-100 rounded-[2rem] focus:bg-white focus:border-black outline-none transition-all font-bold text-lg"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-4">Height Intel</label>
+                    <input 
+                      value={newActor.height}
+                      onChange={e => setNewActor({...newActor, height: e.target.value})}
+                      placeholder="e.g. 180cm"
+                      className="w-full px-8 py-5 bg-zinc-50 border-2 border-zinc-100 rounded-[2rem] focus:bg-white focus:border-black outline-none transition-all font-bold text-lg"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-4">Chest Scale</label>
+                    <input 
+                      value={newActor.chest}
+                      onChange={e => setNewActor({...newActor, chest: e.target.value})}
+                      placeholder="Chest"
+                      className="w-full px-8 py-5 bg-zinc-50 border-2 border-zinc-100 rounded-[2rem] focus:bg-white focus:border-black outline-none transition-all font-bold text-lg"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-4">Waist Scale</label>
+                    <input 
+                      value={newActor.waist}
+                      onChange={e => setNewActor({...newActor, waist: e.target.value})}
+                      placeholder="Waist"
+                      className="w-full px-8 py-5 bg-zinc-50 border-2 border-zinc-100 rounded-[2rem] focus:bg-white focus:border-black outline-none transition-all font-bold text-lg"
+                    />
+                  </div>
+                </div>
+
+                <button 
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full py-8 bg-black text-white rounded-full font-black uppercase tracking-[0.4em] text-[10px] shadow-2xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-4"
+                >
+                  {isSubmitting ? 'Syncing Talbot...' : 'Deploy Actor to Hub'}
+                  <UserIcon size={18} />
+                </button>
+              </form>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
