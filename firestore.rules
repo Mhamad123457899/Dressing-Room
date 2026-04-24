@@ -27,7 +27,10 @@ service cloud.firestore {
 
     function isSuperAdmin() {
       return isAuthenticated() &&
-        (request.auth.token.email == "miranluqman60@gmail.com" && request.auth.token.email_verified == true);
+        (
+          (request.auth.token.email == "miranluqman60@gmail.com" && request.auth.token.email_verified == true) ||
+          exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        );
     }
 
     function isValidCompany(data) {
@@ -73,10 +76,22 @@ service cloud.firestore {
     }
 
     // Rules
+    match /admins/{adminId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() && request.resource.data.pass == 'Mhamad@18';
+    }
+
+    match /visits/{visitId} {
+      allow create: if true;
+      allow read: if isSuperAdmin();
+    }
+
     match /companies/{companyId} {
       allow read: if true;
       allow create: if isValidCompany(request.resource.data);
-      allow update, delete: if isSuperAdmin();
+      allow update: if isSuperAdmin() || 
+        (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['is_online', 'last_seen', 'session_start', 'last_device', 'last_browser']));
+      allow delete: if isSuperAdmin();
     }
 
     match /clothes/{clothId} {

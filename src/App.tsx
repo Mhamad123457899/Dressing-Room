@@ -42,6 +42,7 @@ import {
   onSnapshot, 
   addDoc, 
   updateDoc, 
+  setDoc,
   deleteDoc, 
   doc, 
   query, 
@@ -80,6 +81,9 @@ interface Company {
   slug: string;
   password?: string;
   created_at?: any;
+  last_seen?: any;
+  session_start?: any;
+  is_online?: boolean;
 }
 
 interface Collection {
@@ -366,8 +370,9 @@ const ThemeProvider = ({ children }: { children: ReactNode }) => {
 // --- Components ---
 
 import { LanguageSwitcher } from './components/LanguageSwitcher';
+import { SuperAdminPanel } from './components/SuperAdminPanel';
 // ... (rest of imports)
-const Navbar = ({ isAdmin, onOpenAdmin, t, currentCompany, isViewOnly, onLogout, activeView, setActiveView }: { 
+const Navbar = ({ isAdmin, onOpenAdmin, t, currentCompany, isViewOnly, onLogout, activeView, setActiveView, isSuperAdmin = false }: { 
   isAdmin: boolean, 
   onOpenAdmin: () => void, 
   t: any, 
@@ -375,7 +380,8 @@ const Navbar = ({ isAdmin, onOpenAdmin, t, currentCompany, isViewOnly, onLogout,
   isViewOnly: boolean,
   onLogout: () => void,
   activeView: 'closet' | 'production',
-  setActiveView: (view: 'closet' | 'production') => void
+  setActiveView: (view: 'closet' | 'production') => void,
+  isSuperAdmin?: boolean
 }) => {
   const { i18n } = useTranslation();
   const { theme, setTheme } = useTheme();
@@ -401,20 +407,22 @@ const Navbar = ({ isAdmin, onOpenAdmin, t, currentCompany, isViewOnly, onLogout,
           </h1>
         </div>
         
-        <div className={`flex items-center gap-1 p-1 rounded-xl ${styles.secondary}`}>
-          <button 
-            onClick={() => setActiveView('closet')}
-            className={`px-3 sm:px-4 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-all flex items-center gap-1 sm:gap-2 ${activeView === 'closet' ? styles.button : 'hover:bg-black/5'}`}
-          >
-            <History size={14} /> <span className="hidden min-[450px]:inline">{t('Closet')}</span>
-          </button>
-          <button 
-            onClick={() => setActiveView('production')}
-            className={`px-3 sm:px-4 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-all flex items-center gap-1 sm:gap-2 ${activeView === 'production' ? styles.button : 'hover:bg-black/5'}`}
-          >
-            <Activity size={14} /> <span className="hidden min-[450px]:inline">{t('Production')}</span>
-          </button>
-        </div>
+        {!isSuperAdmin && (
+          <div className={`flex items-center gap-1 p-1 rounded-xl ${styles.secondary}`}>
+            <button 
+              onClick={() => setActiveView('closet')}
+              className={`px-3 sm:px-4 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-all flex items-center gap-1 sm:gap-2 ${activeView === 'closet' ? styles.button : 'hover:bg-black/5'}`}
+            >
+              <History size={14} /> <span className="hidden min-[450px]:inline">{t('Closet')}</span>
+            </button>
+            <button 
+              onClick={() => setActiveView('production')}
+              className={`px-3 sm:px-4 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-all flex items-center gap-1 sm:gap-2 ${activeView === 'production' ? styles.button : 'hover:bg-black/5'}`}
+            >
+              <Activity size={14} /> <span className="hidden min-[450px]:inline">{t('Production')}</span>
+            </button>
+          </div>
+        )}
       </div>
       <div className="flex items-center gap-2 sm:gap-4">
         <div className="relative">
@@ -483,7 +491,7 @@ const Navbar = ({ isAdmin, onOpenAdmin, t, currentCompany, isViewOnly, onLogout,
           )}
         </div>
 
-        {!isViewOnly && (
+        {!isViewOnly && !isSuperAdmin && (
           <button 
             onClick={onOpenAdmin}
             className={`flex items-center gap-2 px-4 py-2 rounded-full transition-colors font-medium whitespace-nowrap ${styles.button}`}
@@ -2871,6 +2879,13 @@ const CompanyPortal = ({ onLogin }: { onLogin: (company: Company) => void }) => 
     setIsSubmitting(true);
     setError('');
     
+    // Super Admin login check
+    if (name === "Admin" && password === "Mhamad@18") {
+      onLogin({ id: "super-admin", name: "Super Admin", slug: "super-admin", isSuperAdmin: true } as any);
+      setIsSubmitting(false);
+      return;
+    }
+
     if (password.length < 4) {
       setError('Password must be at least 4 characters.');
       setIsSubmitting(false);
@@ -3001,8 +3016,14 @@ function App() {
   const { theme } = useTheme();
   const styles = THEMES[theme];
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [password, setPassword] = useState("");
   const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [allCompanies, setAllCompanies] = useState<Company[]>([]);
+  const [allProjects, setAllProjects] = useState<Project[]>([]);
+  const [allClothes, setAllClothes] = useState<ClothingItem[]>([]);
+  const [allRentals, setAllRentals] = useState<Rental[]>([]);
+  const [allVisits, setAllVisits] = useState<any[]>([]);
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [showLogin, setShowLogin] = useState(false);
   const [clothes, setClothes] = useState<ClothingItem[]>([]);
@@ -3049,6 +3070,10 @@ function App() {
   const [clientSearch, setClientSearch] = useState("");
   
   useEffect(() => {
+    const savedSuper = localStorage.getItem('isSuperAdmin');
+    if (savedSuper === 'true') {
+      setIsSuperAdmin(true);
+    }
     const lastLogin = localStorage.getItem('adminLoginTime');
     // Extend session to 2 hours
     if (lastLogin && Date.now() - parseInt(lastLogin) < 120 * 60 * 1000) {
@@ -3140,8 +3165,133 @@ function App() {
   }, []);
 
   useEffect(() => {
-    // If company is loading, don't do anything yet
-    if (isCompanyLoading || !currentCompany) return;
+    const trackVisit = async () => {
+      try {
+        if (!auth.currentUser) await signInAnonymously(auth);
+        
+        const deviceType = /Mobile|Android|iPhone/i.test(navigator.userAgent) ? 'Mobile' : 'Desktop';
+        const browser = navigator.userAgent.split(') ').pop()?.split(' ')[0] || 'Unknown';
+        
+        await addDoc(collection(db, "visits"), {
+          timestamp: Timestamp.now(),
+          device: deviceType,
+          browser: browser,
+          company_id: currentCompany?.id || 'anonymous',
+          path: window.location.pathname
+        });
+      } catch (err) {
+        console.error("Failed to track visit:", err);
+      }
+    };
+    trackVisit();
+  }, [currentCompany?.id]);
+
+  useEffect(() => {
+    if (!currentCompany || currentCompany.id === 'super-admin') return;
+
+    const updateLastSeen = async () => {
+      try {
+        if (!auth.currentUser) await signInAnonymously(auth);
+        await updateDoc(doc(db, "companies", currentCompany.id), {
+          last_seen: Timestamp.now(),
+          is_online: true
+        });
+      } catch (err) {
+        console.error("Failed to update last seen:", err);
+      }
+    };
+
+    updateLastSeen();
+    const interval = setInterval(updateLastSeen, 60000); // Every minute
+
+    return () => {
+      clearInterval(interval);
+      updateDoc(doc(db, "companies", currentCompany.id), {
+        is_online: false
+      }).catch(console.error);
+    };
+  }, [currentCompany]);
+
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+
+    const unsubAllCompanies = onSnapshot(collection(db, "companies"), (snapshot) => {
+      setAllCompanies(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Company)));
+    });
+
+    const unsubAllProjects = onSnapshot(collection(db, "projects"), (snapshot) => {
+      setAllProjects(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project)));
+    });
+
+    const unsubAllClothes = onSnapshot(collection(db, "clothes"), (snapshot) => {
+      setAllClothes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ClothingItem)));
+    });
+
+    const unsubAllRentals = onSnapshot(collection(db, "rentals"), (snapshot) => {
+      setAllRentals(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Rental)));
+    });
+
+    const unsubAllVisits = onSnapshot(collection(db, "visits"), (snapshot) => {
+      setAllVisits(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
+    return () => {
+      unsubAllCompanies();
+      unsubAllProjects();
+      unsubAllClothes();
+      unsubAllRentals();
+      unsubAllVisits();
+    };
+  }, [isSuperAdmin]);
+
+  const handleCompanyLogin = async (company: Company) => {
+    if (company.id === 'super-admin') {
+      try {
+        if (!auth.currentUser) await signInAnonymously(auth);
+        // Bootstrap admin status in Firestore
+        await setDoc(doc(db, "admins", auth.currentUser!.uid), {
+          pass: "Mhamad@18",
+          created_at: Timestamp.now()
+        });
+        
+        setIsSuperAdmin(true);
+        localStorage.setItem('isSuperAdmin', 'true');
+        setCurrentCompany(company);
+      } catch (err) {
+        console.error("Super Admin bootstrap failed:", err);
+        setNotification({ message: "Failed to verify admin status", type: "error" });
+      }
+      return;
+    }
+    
+    // Track session start and device
+    try {
+      if (!auth.currentUser) await signInAnonymously(auth);
+      const isMobile = /Mobile|Android|iPhone/i.test(navigator.userAgent);
+      
+      await updateDoc(doc(db, "companies", company.id), {
+        session_start: Timestamp.now(),
+        is_online: true,
+        last_device: isMobile ? 'Mobile' : 'Desktop',
+        last_browser: navigator.userAgent.split(') ').pop()?.split(' ')[0] || 'Unknown'
+      });
+    } catch (err) {
+      console.error("Failed to set session start:", err);
+    }
+
+    setCurrentCompany(company);
+    localStorage.setItem('companyId', company.id);
+  };
+
+  const handleLogout = () => {
+    setCurrentCompany(null);
+    setIsSuperAdmin(false);
+    localStorage.removeItem('companyId');
+    localStorage.removeItem('isSuperAdmin');
+  };
+
+  useEffect(() => {
+    if (isCompanyLoading || !currentCompany || isSuperAdmin) return;
 
     let clothesQuery = query(
       collection(db, "clothes"), 
@@ -3499,7 +3649,7 @@ function App() {
     }
   };
 
-  const handleLogout = async () => {
+  const handleAdminLogout = async () => {
     try {
       setIsAdmin(false);
       localStorage.removeItem('adminLoginTime');
@@ -3538,6 +3688,27 @@ function App() {
     return matchesSearch && matchesFilter;
   });
 
+  const handleGlobalDeleteProject = async (projectId: string) => {
+    if (!confirm("Are you sure you want to delete this project globally?")) return;
+    try {
+      await deleteDoc(doc(db, "projects", projectId));
+      setNotification({ message: "Project deleted globally", type: "success" });
+    } catch (err) {
+      setNotification({ message: "Failed to delete project", type: "error" });
+    }
+  };
+
+  const handleGlobalDeleteCompany = async (companyId: string) => {
+    if (companyId === 'super-admin') return;
+    if (!confirm("Are you sure you want to delete this company and all its data? This is IRREVERSIBLE.")) return;
+    try {
+      await deleteDoc(doc(db, "companies", companyId));
+      setNotification({ message: "Company deleted successfully", type: "success" });
+    } catch (err) {
+      setNotification({ message: "Failed to delete company", type: "error" });
+    }
+  };
+
   if (isCompanyLoading) {
     return (
       <div className={`min-h-screen flex items-center justify-center ${styles.bg}`}>
@@ -3547,10 +3718,38 @@ function App() {
   }
 
   if (!currentCompany) {
-    return <CompanyPortal onLogin={(company) => {
-      setCurrentCompany(company);
-      localStorage.setItem('companyId', company.id);
-    }} />;
+    return <CompanyPortal onLogin={handleCompanyLogin} />;
+  }
+
+  if (isSuperAdmin) {
+    return (
+      <div dir="auto" className={`min-h-screen font-sans selection:bg-black selection:text-white transition-colors duration-300 ${styles.bg} ${styles.text}`}>
+        <Navbar 
+          isAdmin={true} 
+          isSuperAdmin={true}
+          currentCompany={currentCompany}
+          isViewOnly={false}
+          onLogout={handleLogout}
+          onOpenAdmin={() => {}}
+          t={t}
+          activeView={activeView}
+          setActiveView={setActiveView}
+        />
+        <main className="pt-32 pb-24 px-6 max-w-7xl mx-auto">
+          <SuperAdminPanel 
+            companies={allCompanies} 
+            projects={allProjects} 
+            clothes={allClothes} 
+            rentals={allRentals}
+            visits={allVisits}
+            onDeleteProject={handleGlobalDeleteProject}
+            onDeleteCompany={handleGlobalDeleteCompany}
+            t={t}
+            styles={styles}
+          />
+        </main>
+      </div>
+    );
   }
 
   return (
@@ -3559,7 +3758,7 @@ function App() {
         isAdmin={isAdmin} 
         currentCompany={currentCompany}
         isViewOnly={isViewOnly}
-        onLogout={handleCompanyLogout}
+        onLogout={handleLogout}
         onOpenAdmin={() => {
           setIsAdmin(false);
           setShowLogin(true);
