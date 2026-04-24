@@ -394,7 +394,7 @@ const Navbar = ({ isAdmin, onOpenAdmin, t, currentCompany, isViewOnly, onLogout,
         <div className="flex items-center gap-2 sm:gap-4">
           <Logo size={48} src={currentCompany?.logo_url} />
           <h1 className={`text-xl font-bold tracking-tight ${styles.text} hidden xl:inline-block`}>
-            {currentCompany?.name || 'Şan Closet Studio'}
+            {currentCompany?.name || 'Admin Panel'}
           </h1>
         </div>
         
