@@ -6,6 +6,7 @@ import html2canvas from "html2canvas";
 import { 
   Plus, 
   Trash2, 
+  Edit2,
   Settings, 
   LogOut, 
   Calendar, 
@@ -123,6 +124,8 @@ interface Project {
   id: string;
   company_id: string;
   name: string;
+  user_name?: string;
+  user_phone?: string;
   description: string;
   created_at: any;
 }
@@ -685,10 +688,18 @@ const ProductionBoard = ({
   const [showAddProject, setShowAddProject] = useState(false);
   const [showAddActor, setShowAddActor] = useState(false);
   const [editingActor, setEditingActor] = useState<Actor | null>(null);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [editingShot, setEditingShot] = useState<Shot | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    onSelect: () => void;
+  } | null>(null);
   const pdfRef = useRef<HTMLDivElement>(null);
 
-  const [newProject, setNewProject] = useState({ name: "", description: "" });
+  const [newProject, setNewProject] = useState({ name: "", description: "", user_name: "", user_phone: "" });
   const [newActor, setNewActor] = useState({ 
     name: "", weight: "", height: "", shoulder_size: "", waist_size: "" 
   });
@@ -702,19 +713,121 @@ const ProductionBoard = ({
     if (!currentCompany) return;
     setIsSubmitting(true);
     try {
-      await addDoc(collection(db, "projects"), {
-        ...newProject,
-        company_id: currentCompany.id,
-        created_at: Timestamp.now()
-      });
-      setNewProject({ name: "", description: "" });
+      if (editingProject) {
+        await updateDoc(doc(db, "projects", editingProject.id), {
+          name: newProject.name,
+          description: newProject.description,
+          user_name: newProject.user_name,
+          user_phone: newProject.user_phone,
+          updated_at: Timestamp.now()
+        });
+        setNotification({ message: "Project updated successfully!", type: "success" });
+      } else {
+        await addDoc(collection(db, "projects"), {
+          name: newProject.name,
+          description: newProject.description,
+          user_name: newProject.user_name,
+          user_phone: newProject.user_phone,
+          company_id: currentCompany.id,
+          created_at: Timestamp.now()
+        });
+        setNotification({ message: "Project created successfully!", type: "success" });
+      }
+      setNewProject({ name: "", description: "", user_name: "", user_phone: "" });
       setShowAddProject(false);
-      setNotification({ message: "Project created successfully!", type: "success" });
+      setEditingProject(null);
     } catch (err) {
-      setNotification({ message: "Failed to create project.", type: "error" });
+      setNotification({ message: "Failed to save project.", type: "error" });
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const isRecentlyCreated = (createdAt: any) => {
+    if (!createdAt) return false;
+    try {
+      let date: Date;
+      if (typeof createdAt.toDate === 'function') {
+        date = createdAt.toDate();
+      } else if (createdAt instanceof Date) {
+        date = createdAt;
+      } else if (typeof createdAt === 'number') {
+        date = new Date(createdAt);
+      } else if (createdAt.seconds) {
+        date = new Date(createdAt.seconds * 1000);
+      } else {
+        date = new Date(createdAt);
+      }
+      
+      if (isNaN(date.getTime())) return false;
+      
+      const diffMinutes = (Date.now() - date.getTime()) / (1000 * 60);
+      return diffMinutes < 10;
+    } catch (e) {
+      return false;
+    }
+  };
+
+  const handleDeleteProject = async (projectId: string, projectCreatedAt: any) => {
+    if (!isAdmin && !isRecentlyCreated(projectCreatedAt)) {
+      setNotification({ message: t("This project can no longer be edited or deleted."), type: "error" });
+      return;
+    }
+
+    setDeleteConfirm({
+      show: true,
+      title: t("Delete Project"),
+      message: t("Are you sure you want to delete this project? This will NOT delete actors and shots associated with it, but they will be orphaned."),
+      onSelect: async () => {
+        try {
+          if (!auth.currentUser) await signInAnonymously(auth);
+          await deleteDoc(doc(db, "projects", projectId));
+          setNotification({ message: t("Project deleted successfully!"), type: "success" });
+          if (selectedProject?.id === projectId) setSelectedProject(null);
+        } catch (err) {
+          console.error("Delete project error:", err);
+          setNotification({ message: t("Failed to delete project."), type: "error" });
+        }
+        setDeleteConfirm(null);
+      }
+    });
+  };
+
+  const handleEditProject = (project: Project) => {
+    if (!isAdmin && !isRecentlyCreated(project.created_at)) {
+      setNotification({ message: t("This project can no longer be edited or deleted."), type: "error" });
+      return;
+    }
+    setNewProject({
+      name: project.name,
+      description: project.description,
+      user_name: project.user_name || "",
+      user_phone: project.user_phone || ""
+    });
+    setEditingProject(project);
+    setShowAddProject(true);
+  };
+
+  const handleDeleteActor = async (actorId: string) => {
+    if (isViewOnly) return;
+    
+    setDeleteConfirm({
+      show: true,
+      title: t("Delete Actor"),
+      message: t("Are you sure you want to delete this actor?"),
+      onSelect: async () => {
+        try {
+          if (!auth.currentUser) await signInAnonymously(auth);
+          await deleteDoc(doc(db, "actors", actorId));
+          setNotification({ message: t("Actor deleted successfully!"), type: "success" });
+          if (selectedActor?.id === actorId) setSelectedActor(null);
+        } catch (err) {
+          console.error("Delete actor error:", err);
+          setNotification({ message: t("Failed to delete actor."), type: "error" });
+        }
+        setDeleteConfirm(null);
+      }
+    });
   };
 
   const handleAddActor = async (e: React.FormEvent) => {
@@ -765,18 +878,56 @@ const ProductionBoard = ({
   const handleAddShot = async (actorId: string, shotNumber: number, itemIds: string[]) => {
     if (!selectedProject || !currentCompany) return;
     try {
-      await addDoc(collection(db, "shots"), {
-        company_id: currentCompany.id,
-        project_id: selectedProject.id,
-        actor_id: actorId,
-        shot_number: shotNumber,
-        clothing_item_ids: itemIds,
-        created_at: Timestamp.now()
-      });
-      setNotification({ message: `Shot ${shotNumber} added!`, type: "success" });
+      if (editingShot) {
+        await updateDoc(doc(db, "shots", editingShot.id), {
+          shot_number: shotNumber,
+          clothing_item_ids: itemIds,
+          updated_at: Timestamp.now()
+        });
+        setNotification({ message: `Shot ${shotNumber} updated!`, type: "success" });
+      } else {
+        await addDoc(collection(db, "shots"), {
+          company_id: currentCompany.id,
+          project_id: selectedProject.id,
+          actor_id: actorId,
+          shot_number: shotNumber,
+          clothing_item_ids: itemIds,
+          created_at: Timestamp.now()
+        });
+        setNotification({ message: `Shot ${shotNumber} added!`, type: "success" });
+      }
+      setEditingShot(null);
     } catch (err) {
-      setNotification({ message: "Failed to add shot.", type: "error" });
+      setNotification({ message: "Failed to save shot.", type: "error" });
     }
+  };
+
+  const handleEditShot = (shot: Shot) => {
+    setEditingShot(shot);
+    setShotNumber(shot.shot_number);
+    setSelectedShotClothingIds(shot.clothing_item_ids);
+    setActiveActorId(shot.actor_id);
+  };
+
+  const handleDeleteShot = async (shotId: string) => {
+    if (isViewOnly) return;
+    
+    setDeleteConfirm({
+      show: true,
+      title: t("Delete Shot"),
+      message: t("Are you sure you want to delete this shot?"),
+      onSelect: async () => {
+        try {
+          if (!auth.currentUser) await signInAnonymously(auth);
+          await deleteDoc(doc(db, "shots", shotId));
+          setNotification({ message: t("Shot deleted successfully!"), type: "success" });
+        } catch (err) {
+          console.error("Delete shot error:", err);
+          setNotification({ message: t("Failed to delete shot."), type: "error" });
+        }
+        setDeleteConfirm(null);
+      }
+    });
   };
 
   const exportPDF = async () => {
@@ -935,9 +1086,9 @@ const ProductionBoard = ({
         <div className={`flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 py-8 -mx-6 px-6 border-b transition-all ${styles.bg}`}>
           <button 
             onClick={() => setSelectedActor(null)}
-            className={`flex items-center gap-2 font-black uppercase tracking-widest text-xs ${styles.accent}`}
+            className={`flex items-center gap-3 px-6 py-4 rounded-2xl font-black uppercase tracking-widest text-xs border shadow-sm transition-all active:scale-95 ${styles.secondary} hover:shadow-md`}
           >
-            <ChevronRight className="rotate-180" size={16} /> {t('Back to Project List')}
+            <ChevronRight className="rotate-180" size={18} /> {t('Back to Project List')}
           </button>
           
           <div className="flex items-center gap-4">
@@ -1007,9 +1158,19 @@ const ProductionBoard = ({
                   animate={{ opacity: 1, y: 0 }}
                   className={`p-6 rounded-[2rem] border overflow-hidden ${styles.card}`}
                 >
-                  <div className="flex justify-between items-center mb-6">
-                    <span className="px-3 py-1 bg-blue-500 text-white rounded-full text-[10px] font-black uppercase tracking-widest">Shot {shot.shot_number}</span>
-                  </div>
+                    <div className="flex items-center gap-2">
+                      <span className="px-3 py-1 bg-blue-500 text-white rounded-full text-[10px] font-black uppercase tracking-widest">Shot {shot.shot_number}</span>
+                      {!isViewOnly && (
+                        <div className="flex gap-2">
+                          <button onClick={() => handleEditShot(shot)} className={`p-1.5 rounded-lg border ${styles.secondary} hover:text-blue-500 transition-colors`}>
+                            <Edit2 size={12} />
+                          </button>
+                          <button onClick={() => handleDeleteShot(shot.id)} className={`p-1.5 rounded-lg border ${styles.secondary} hover:text-red-500 transition-colors`}>
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   
                   <div className={`grid gap-3 ${(shot.clothing_item_ids || []).length > 2 ? 'grid-cols-2' : 'grid-cols-1 sm:grid-cols-2'}`}>
                     {(shot.clothing_item_ids || []).map(itemId => {
@@ -1091,9 +1252,9 @@ const ProductionBoard = ({
         <div className={`flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 py-8 -mx-6 px-6 border-b transition-all ${styles.bg}`}>
           <button 
             onClick={() => setSelectedProject(null)}
-            className={`flex items-center gap-2 font-black uppercase tracking-widest text-xs ${styles.accent}`}
+            className={`flex items-center gap-3 px-6 py-4 rounded-2xl font-black uppercase tracking-widest text-xs border shadow-sm transition-all active:scale-95 ${styles.secondary} hover:shadow-md`}
           >
-            <ChevronRight className="rotate-180" size={16} /> {t('Back to Projects')}
+            <ChevronRight className="rotate-180" size={18} /> {t('Back to Projects')}
           </button>
           
           <div className="flex flex-col sm:flex-row gap-4">
@@ -1128,8 +1289,26 @@ const ProductionBoard = ({
               onClick={() => setSelectedActor(actor)}
               className={`p-8 rounded-[2.5rem] border group cursor-pointer transition-all ${styles.card} hover:border-blue-500 hover:shadow-2xl hover:shadow-blue-500/10`}
             >
-              <div className={`w-16 h-16 rounded-3xl flex items-center justify-center mb-6 transition-all group-hover:scale-110 ${styles.secondary}`}>
-                <User size={32} className="text-blue-500" />
+              <div className="flex items-center justify-between gap-4 mb-6 transition-all group-hover:scale-105">
+                <div className={`w-16 h-16 rounded-3xl flex items-center justify-center ${styles.secondary}`}>
+                  <User size={32} className="text-blue-500" />
+                </div>
+                {!isViewOnly && (
+                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleEditActor(actor); }}
+                      className={`p-3 rounded-2xl border ${styles.secondary} hover:text-blue-500 transition-all`}
+                    >
+                      <Edit2 size={16} />
+                    </button>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleDeleteActor(actor.id); }}
+                      className={`p-3 rounded-2xl border ${styles.secondary} hover:text-red-500 transition-all`}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                )}
               </div>
               <h3 className="text-2xl font-black tracking-tight mb-2 truncate">{actor.name}</h3>
               <p className={`text-[10px] font-black uppercase tracking-widest opacity-50`}>{shots.filter(s => s.actor_id === actor.id).length} Costumes Shots</p>
@@ -1315,8 +1494,26 @@ const ProductionBoard = ({
             onClick={() => setSelectedProject(project)}
             className={`p-10 rounded-[3rem] border border-transparent shadow-xl cursor-pointer hover:border-black transition-all group ${styles.card}`}
           >
-            <div className={`w-16 h-16 rounded-[1.5rem] flex items-center justify-center mb-8 ${styles.secondary}`}>
-              <Dna size={32} />
+            <div className="flex items-start justify-between mb-8">
+              <div className={`w-16 h-16 rounded-[1.5rem] flex items-center justify-center ${styles.secondary}`}>
+                <Dna size={32} />
+              </div>
+              {(isAdmin || isRecentlyCreated(project.created_at)) && (
+                <div className="flex gap-2">
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); handleEditProject(project); }}
+                    className={`p-3 rounded-2xl border ${styles.secondary} hover:text-blue-500 hover:border-blue-500/50 transition-all shadow-sm active:scale-95`}
+                  >
+                    <Edit2 size={18} />
+                  </button>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); handleDeleteProject(project.id, project.created_at); }}
+                    className={`p-3 rounded-2xl border ${styles.secondary} hover:text-red-500 hover:border-red-500/50 transition-all shadow-sm active:scale-95`}
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              )}
             </div>
             <h3 className="text-2xl font-bold mb-2 group-hover:text-blue-500 transition-colors">{project.name}</h3>
             <p className={`mb-8 line-clamp-2 ${styles.accent}`}>{project.description}</p>
@@ -1330,32 +1527,135 @@ const ProductionBoard = ({
         ))}
       </div>
 
-      {showAddProject && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-6 bg-black/50 backdrop-blur-sm">
+      {showAddProject && createPortal(
+        <div className={`fixed inset-0 z-[300] overflow-y-auto ${styles.bg}`}>
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="min-h-screen w-full"
+          >
+            <div className={`sticky top-0 z-10 border-b flex justify-between items-center p-6 mb-8 ${styles.bg} backdrop-blur-md`}>
+              <div>
+                <h3 className="text-3xl font-black tracking-tighter">{t('Create New Project')}</h3>
+                <p className={`text-sm ${styles.accent}`}>{t('Set up a new production sequence')}</p>
+              </div>
+              <button 
+                onClick={() => {
+                  setShowAddProject(false);
+                  setEditingProject(null);
+                  setNewProject({ name: "", description: "", user_name: "", user_phone: "" });
+                }} 
+                className={`w-12 h-12 rounded-full flex items-center justify-center border shadow-sm transition-all active:scale-95 ${styles.secondary}`}
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="max-w-3xl mx-auto p-6 pb-32">
+              <form onSubmit={handleCreateProject} className="space-y-10">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-2">
+                    <label className="block text-[10px] font-black uppercase tracking-widest opacity-50 ml-1">{t('Your Name')}</label>
+                    <input 
+                      required 
+                      value={newProject.user_name} 
+                      onChange={e => setNewProject({...newProject, user_name: e.target.value})} 
+                      className={`w-full p-5 rounded-3xl border-2 transition-all focus:border-blue-500 outline-none text-lg ${styles.input}`} 
+                      placeholder="e.g. John Doe" 
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block text-[10px] font-black uppercase tracking-widest opacity-50 ml-1">{t('Phone Number')}</label>
+                    <input 
+                      required 
+                      value={newProject.user_phone} 
+                      onChange={e => setNewProject({...newProject, user_phone: e.target.value})} 
+                      className={`w-full p-5 rounded-3xl border-2 transition-all focus:border-blue-500 outline-none text-lg ${styles.input}`} 
+                      placeholder="+123..." 
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-[10px] font-black uppercase tracking-widest opacity-50 ml-1">{t('Production Name')}</label>
+                  <input 
+                    required 
+                    value={newProject.name} 
+                    onChange={e => setNewProject({...newProject, name: e.target.value})} 
+                    className={`w-full p-5 rounded-3xl border-2 transition-all focus:border-blue-500 outline-none text-xl font-bold ${styles.input}`} 
+                    placeholder="e.g. Summer Collection Shoot" 
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-[10px] font-black uppercase tracking-widest opacity-50 ml-1">{t('Production Description')}</label>
+                  <textarea 
+                    value={newProject.description} 
+                    onChange={e => setNewProject({...newProject, description: e.target.value})} 
+                    className={`w-full p-5 rounded-3xl border-2 transition-all focus:border-blue-500 outline-none h-48 text-lg resize-none ${styles.input}`} 
+                    placeholder="Details about the shoot, location, etc..." 
+                  />
+                </div>
+
+                <div className="pt-6">
+                  <button 
+                    type="submit" 
+                    disabled={isSubmitting} 
+                    className={`w-full py-6 rounded-[2.5rem] font-black uppercase tracking-widest text-sm shadow-2xl shadow-blue-500/20 transition-all active:scale-[0.98] flex items-center justify-center gap-3 ${styles.button}`}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        {t('Creating...')}
+                      </>
+                    ) : (
+                      <>
+                        <Plus size={20} />
+                        {t('Confirm Production')}
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </motion.div>
+        </div>,
+        document.body
+      )}
+
+      {deleteConfirm && createPortal(
+        <div className="fixed inset-0 z-[400] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md">
           <motion.div 
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className={`w-full max-w-lg p-10 rounded-[3rem] shadow-2xl border ${styles.modal} ${styles.border}`}
+            className={`w-full max-w-md p-8 rounded-[2.5rem] shadow-2xl border ${styles.modal} ${styles.border}`}
           >
-            <div className="flex justify-between items-center mb-8">
-              <h3 className="text-2xl font-black tracking-tighter">{t('Create New Project')}</h3>
-              <button onClick={() => setShowAddProject(false)} className={`p-2 rounded-full ${styles.secondary}`}><X size={20} /></button>
+            <div className="flex items-center gap-4 mb-6 text-red-500">
+              <div className="w-12 h-12 rounded-2xl bg-red-500/10 flex items-center justify-center">
+                <Trash2 size={24} />
+              </div>
+              <h3 className="text-2xl font-black tracking-tighter">{deleteConfirm.title}</h3>
             </div>
-            <form onSubmit={handleCreateProject} className="space-y-6">
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">{t('Project Name')}</label>
-                <input required value={newProject.name} onChange={e => setNewProject({...newProject, name: e.target.value})} className={`w-full p-4 rounded-2xl border ${styles.input}`} placeholder="e.g. Summer Film Shoot" />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">{t('Description')}</label>
-                <textarea value={newProject.description} onChange={e => setNewProject({...newProject, description: e.target.value})} className={`w-full p-4 rounded-2xl border ${styles.input} h-32`} placeholder="Project details..." />
-              </div>
-              <button type="submit" disabled={isSubmitting} className={`w-full py-5 rounded-[2rem] font-black uppercase tracking-widest text-sm shadow-2xl transition-all active:scale-95 ${styles.button} hover:shadow-blue-500/20`}>
-                {isSubmitting ? t('Launching...') : t('Confirm Production')}
+            <p className={`mb-8 leading-relaxed ${styles.accent}`}>
+              {deleteConfirm.message}
+            </p>
+            <div className="flex gap-4">
+              <button 
+                onClick={() => setDeleteConfirm(null)}
+                className={`flex-1 py-4 rounded-2xl font-black uppercase tracking-widest text-xs border ${styles.secondary}`}
+              >
+                {t('Cancel')}
               </button>
-            </form>
+              <button 
+                onClick={deleteConfirm.onSelect}
+                className="flex-1 py-4 rounded-2xl font-black uppercase tracking-widest text-xs bg-red-500 text-white hover:bg-red-600 transition-all shadow-lg shadow-red-500/20"
+              >
+                {t('Delete')}
+              </button>
+            </div>
           </motion.div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -2706,7 +3006,7 @@ function App() {
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [showLogin, setShowLogin] = useState(false);
   const [clothes, setClothes] = useState<ClothingItem[]>([]);
-  const [activeView, setActiveView] = useState<'closet' | 'production'>('closet');
+  const [activeView, setActiveView] = useState<'closet' | 'production'>('production');
   const [projects, setProjects] = useState<Project[]>([]);
   const [actors, setActors] = useState<Actor[]>([]);
   const [shots, setShots] = useState<Shot[]>([]);

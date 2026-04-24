@@ -88,6 +88,8 @@
       "properties": {
         "company_id": { "type": "string" },
         "name": { "type": "string" },
+        "user_name": { "type": "string" },
+        "user_phone": { "type": "string" },
         "description": { "type": "string" },
         "created_at": { "type": "string", "format": "date-time" }
       },
