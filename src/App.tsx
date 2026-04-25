@@ -267,7 +267,7 @@ class ErrorBoundary extends React.Component<any, any> {
             <p className="text-zinc-500 mb-8 leading-relaxed">{message}</p>
             <button 
               onClick={() => window.location.reload()}
-              className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest transition-all shadow-lg ${styles.button}`}
+              className="w-full py-4 rounded-2xl font-black uppercase tracking-widest transition-all shadow-lg bg-black text-white hover:bg-zinc-800"
             >
               Refresh Page
             </button>

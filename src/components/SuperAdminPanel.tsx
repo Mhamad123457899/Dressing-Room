@@ -25,7 +25,9 @@ import {
   Maximize2,
   ChevronRight,
   Layers,
-  Plus
+  Plus,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { db } from '../firebase';
@@ -65,6 +67,7 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [selectedActorName, setSelectedActorName] = useState<string | null>(null);
+  const [expandedScenes, setExpandedScenes] = useState<Record<string, boolean>>({});
   const [fullscreenClothingId, setFullscreenClothingId] = useState<string | null>(null);
   const [showAddProject, setShowAddProject] = useState(false);
   const [showAddActor, setShowAddActor] = useState(false);
@@ -138,7 +141,14 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
   const selectedActorRentals = selectedActorName 
     ? projectRentals.filter(r => (r.user_name || r.actor_name || 'Generic Actor') === selectedActorName || r.actor_id === selectedActor?.id) 
     : [];
-  const selectedActorShots = selectedActor?.id ? projectShotsData.filter(s => s.actor_id === selectedActor.id) : [];
+  const selectedActorShots = selectedActor?.id ? projectShotsData.filter(s => s.actor_id === selectedActor.id).sort((a: any, b: any) => (a.scene_number || 1) - (b.scene_number || 1) || a.shot_number - b.shot_number) : [];
+
+  const shotsByScene = selectedActorShots.reduce((acc: Record<string, any[]>, shot) => {
+    const scene = (shot.scene_number || 1).toString();
+    if (!acc[scene]) acc[scene] = [];
+    acc[scene].push(shot);
+    return acc;
+  }, {});
 
   useEffect(() => {
     if (selectedCompanyId || selectedProjectId || selectedActorName || fullscreenClothingId) {
@@ -1022,8 +1032,8 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
                   <p className="text-2xl font-black tracking-tighter text-black">{selectedActorRentals.length}</p>
                 </div>
                 <div className="p-6 rounded-[2.5rem] bg-white border-2 border-zinc-100 shadow-sm">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1">Production Shots</p>
-                  <p className="text-2xl font-black tracking-tighter text-black">{selectedActorShots.length}</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1">Production Scene</p>
+                  <p className="text-2xl font-black tracking-tighter text-black">{Object.keys(shotsByScene).length}</p>
                 </div>
                 <div className="p-6 rounded-[2.5rem] bg-white border-2 border-zinc-100 shadow-sm">
                   <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1">Measurements</p>
@@ -1040,33 +1050,59 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
                 <div className="mb-20">
                   <div className="flex items-center gap-4 mb-10">
                     <Layers className="text-black" size={24} />
-                    <h3 className="text-2xl font-black uppercase italic tracking-tighter text-black">Allocated Shots</h3>
+                    <h3 className="text-2xl font-black uppercase italic tracking-tighter text-black">Allocated Scenes & Shots</h3>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {selectedActorShots.map(shot => (
-                      <div key={shot.id} className="p-8 rounded-[3rem] bg-white border-2 border-zinc-100 shadow-sm">
-                        <div className="flex justify-between items-start mb-8">
-                          <div>
-                            <span className={`px-4 py-1.5 text-[10px] font-black uppercase rounded-lg mb-2 inline-block ${styles.inverted}`}>
-                              SCENE: {shot.scene_number || '01'}
-                            </span>
-                            <h4 className="text-xl font-black uppercase tracking-tighter">{shot.name}</h4>
+                  <div className="space-y-4">
+                    {Object.entries(shotsByScene).map(([sceneNum, sceneShots]: [string, any[]]) => {
+                      const isExpanded = expandedScenes[sceneNum];
+                      return (
+                        <div key={sceneNum} className="rounded-[2.5rem] border-2 border-zinc-100 bg-white overflow-hidden shadow-sm">
+                          <div 
+                            onClick={() => setExpandedScenes(prev => ({...prev, [sceneNum]: !prev[sceneNum]}))}
+                            className={`flex items-center justify-between p-6 cursor-pointer transition-colors ${isExpanded ? 'bg-zinc-50' : 'hover:bg-zinc-50/50'}`}
+                          >
+                            <div className="flex items-center gap-4">
+                              <span className={`px-4 py-1.5 text-[10px] font-black uppercase rounded-lg ${styles.inverted}`}>
+                                SCENE: {sceneNum.padStart(2, '0')}
+                              </span>
+                              <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">{sceneShots.length} Shots</span>
+                            </div>
+                            <div className="p-2 rounded-full border border-zinc-200">
+                              {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                            </div>
                           </div>
-                          <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest italic">{shot.day || 'Day 1'}</span>
-                        </div>
-                        
-                        <div className="grid grid-cols-3 gap-3">
-                          {shot.clothing_item_ids?.map((id: string) => {
-                            const item = clothes.find(c => c.id === id);
-                            return item ? (
-                              <div key={id} className="aspect-[3/4] rounded-2xl overflow-hidden bg-zinc-100 border-2 border-white shadow-sm ring-1 ring-zinc-100 cursor-pointer" onClick={() => setFullscreenClothingId(id)}>
-                                <img src={item.image_url} className="w-full h-full object-cover" />
+
+                          {isExpanded && (
+                            <div className="p-8 pt-4 border-t border-zinc-100">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
+                                {sceneShots.map(shot => (
+                                  <div key={shot.id} className="p-6 rounded-[2.5rem] bg-zinc-50 border border-zinc-100">
+                                    <div className="flex justify-between items-start mb-6">
+                                      <div>
+                                        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Shot {shot.shot_number}</p>
+                                        <h4 className="text-lg font-black uppercase tracking-tighter">{shot.name || `Shot ${shot.shot_number}`}</h4>
+                                      </div>
+                                      <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest italic">{shot.day || 'Day 1'}</span>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-3 gap-3">
+                                      {shot.clothing_item_ids?.map((id: string) => {
+                                        const item = clothes.find(c => c.id === id);
+                                        return item ? (
+                                          <div key={id} className="aspect-[3/4] rounded-2xl overflow-hidden bg-white border-2 border-white shadow-sm ring-1 ring-zinc-200 cursor-pointer" onClick={() => setFullscreenClothingId(id)}>
+                                            <img src={item.image_url} className="w-full h-full object-cover" />
+                                          </div>
+                                        ) : null;
+                                      })}
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
-                            ) : null;
-                          })}
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
