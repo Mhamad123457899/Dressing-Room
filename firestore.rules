@@ -72,7 +72,7 @@ service cloud.firestore {
     }
 
     function isValidShot(data) {
-      return data.company_id is string && data.project_id is string && data.actor_id is string && data.shot_number is number && data.clothing_item_ids is list;
+      return data.company_id is string && data.project_id is string && data.actor_id is string && data.scene_number is number && data.shot_number is number && data.clothing_item_ids is list;
     }
 
     // Rules

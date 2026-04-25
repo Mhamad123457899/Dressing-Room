@@ -217,7 +217,7 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
   return (
     <div className="space-y-12 pb-32">
       {/* Dynamic Header with Live Stats */}
-      <div className="relative overflow-hidden rounded-[3rem] p-10 bg-black text-white">
+      <div className={`relative overflow-hidden rounded-[3rem] p-10 ${styles.inverted}`}>
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
           <div>
             <div className="flex items-center gap-3 mb-4">
@@ -380,7 +380,7 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
               <button 
                 key={tab}
                 onClick={() => setActiveTab(tab as any)}
-                className={`px-4 sm:px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-3 border-2 ${activeTab === tab ? 'bg-black text-white border-black shadow-2xl scale-105' : 'bg-transparent border-black/10 hover:border-black/30 opacity-60 hover:opacity-100'}`}
+                className={`px-4 sm:px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-3 border-2 ${activeTab === tab ? `${styles.inverted} border-transparent shadow-2xl scale-105` : 'bg-transparent border-black/10 hover:border-black/30 opacity-60 hover:opacity-100'}`}
               >
                 {tab === 'companies' && <Users size={14} />}
                 {tab === 'production_board' && <Activity size={14} />}
@@ -676,7 +676,7 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
 
                   <section>
                     <h3 className="text-[10px] font-black uppercase tracking-[0.3em] mb-8 text-zinc-400 border-b pb-4">Hardware Signature</h3>
-                    <div className="p-10 rounded-[3rem] bg-black text-white shadow-2xl relative overflow-hidden">
+                    <div className={`p-10 rounded-[3rem] shadow-2xl relative overflow-hidden ${styles.inverted}`}>
                       <div className="relative z-10 space-y-8">
                         <div>
                           <p className="text-[9px] font-black uppercase text-zinc-500 mb-2 tracking-widest">Environment</p>
@@ -709,7 +709,7 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
                         <h3 className="text-3xl sm:text-4xl font-black uppercase italic tracking-tighter text-black">Asset Cache</h3>
                         <p className="text-[10px] sm:text-xs text-zinc-500 font-bold uppercase tracking-widest mt-2">Dressing Room Inventory Distribution</p>
                       </div>
-                      <div className="px-5 sm:px-6 py-2 bg-black text-white rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-widest self-start sm:self-center">
+                      <div className={`px-5 sm:px-6 py-2 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-widest self-start sm:self-center ${styles.inverted}`}>
                         {companyClothes.length} TOTAL
                       </div>
                     </div>
@@ -800,7 +800,7 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
               <div className="mt-40 pt-16 border-t flex justify-center">
                 <button 
                   onClick={() => setSelectedCompanyId(null)}
-                  className="group relative px-16 py-8 rounded-full bg-black text-white font-black uppercase tracking-[0.4em] text-[10px] hover:scale-105 transition-all shadow-[0_30px_60px_-15px_rgba(0,0,0,0.4)] active:scale-95"
+                  className={`group relative px-16 py-8 rounded-full font-black uppercase tracking-[0.4em] text-[10px] hover:scale-105 transition-all shadow-[0_30px_60px_-15px_rgba(0,0,0,0.4)] active:scale-95 ${styles.inverted}`}
                 >
                   <span className="relative z-10">Deactivate Session</span>
                   <div className="absolute inset-0 bg-zinc-800 rounded-full scale-0 group-hover:scale-100 transition-transform origin-center -z-0" />
@@ -918,7 +918,7 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
                       </div>
                       <button 
                         onClick={() => setShowAddActor(true)}
-                        className="px-6 py-3 bg-black text-white text-[10px] font-black uppercase tracking-widest rounded-2xl hover:scale-105 active:scale-95 transition-all shadow-xl flex items-center gap-2"
+                        className={`px-6 py-3 text-[10px] font-black uppercase tracking-widest rounded-2xl hover:scale-105 active:scale-95 transition-all shadow-xl flex items-center gap-2 ${styles.inverted}`}
                       >
                         <Plus size={14} /> Add Actor
                       </button>
@@ -983,7 +983,7 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
       <div className="mt-40 pt-16 border-t flex justify-center">
                 <button 
                   onClick={() => setSelectedProjectId(null)}
-                  className="group relative px-16 py-8 rounded-full bg-black text-white font-black uppercase tracking-[0.4em] text-[10px] hover:scale-105 transition-all shadow-[0_30px_60px_-15px_rgba(0,0,0,0.4)] active:scale-95"
+                  className={`group relative px-16 py-8 rounded-full font-black uppercase tracking-[0.4em] text-[10px] hover:scale-105 transition-all shadow-[0_30px_60px_-15px_rgba(0,0,0,0.4)] active:scale-95 ${styles.inverted}`}
                 >
                   <span className="relative z-10">Deactivate Production Detail</span>
                   <div className="absolute inset-0 bg-zinc-800 rounded-full scale-0 group-hover:scale-100 transition-transform origin-center -z-0" />
@@ -1047,7 +1047,7 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
                       <div key={shot.id} className="p-8 rounded-[3rem] bg-white border-2 border-zinc-100 shadow-sm">
                         <div className="flex justify-between items-start mb-8">
                           <div>
-                            <span className="px-4 py-1.5 bg-black text-white text-[10px] font-black uppercase rounded-lg mb-2 inline-block">
+                            <span className={`px-4 py-1.5 text-[10px] font-black uppercase rounded-lg mb-2 inline-block ${styles.inverted}`}>
                               SCENE: {shot.scene_number || '01'}
                             </span>
                             <h4 className="text-xl font-black uppercase tracking-tighter">{shot.name}</h4>
@@ -1084,7 +1084,7 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
                       <div className="aspect-[4/5] relative cursor-pointer" onClick={() => setFullscreenClothingId(item?.id)}>
                         {item && <img src={item.image_url} className="w-full h-full object-cover" />}
                         <div className="absolute top-6 left-6 flex flex-col gap-2">
-                          <span className="px-4 py-2 bg-black text-white text-[10px] font-black uppercase rounded-full shadow-lg">
+                          <span className={`px-4 py-2 text-[10px] font-black uppercase rounded-full shadow-lg ${styles.inverted}`}>
                             SHOT: {rental.shot || 'NA'}
                           </span>
                           <span className="px-4 py-2 bg-white/90 backdrop-blur-md text-black text-[10px] font-black uppercase rounded-full border border-black/10 shadow-lg">
@@ -1137,7 +1137,7 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="w-full max-w-2xl bg-white rounded-[3.5rem] p-10 shadow-2xl relative overflow-hidden"
+              className="w-full max-w-2xl bg-white text-black rounded-[3.5rem] p-10 shadow-2xl relative overflow-hidden"
             >
               <div className="flex justify-between items-center mb-10">
                 <h3 className="text-3xl font-black uppercase tracking-tighter italic">Initialize <span className="text-zinc-400">Board</span></h3>
@@ -1208,7 +1208,7 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
                 <button 
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-8 bg-black text-white rounded-full font-black uppercase tracking-[0.4em] text-[10px] shadow-2xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-4"
+                  className={`w-full py-8 rounded-full font-black uppercase tracking-[0.4em] text-[10px] shadow-2xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-4 ${styles.inverted}`}
                 >
                   {isSubmitting ? 'Decrypting Protocols...' : 'Confirm Production Board'}
                   <Activity size={18} />
@@ -1231,7 +1231,7 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="w-full max-w-xl bg-white rounded-[3.5rem] p-10 shadow-2xl"
+              className="w-full max-w-xl bg-white text-black rounded-[3.5rem] p-10 shadow-2xl"
             >
               <div className="flex justify-between items-center mb-10">
                 <h3 className="text-3xl font-black uppercase tracking-tighter italic">Add <span className="text-zinc-400">Actor</span></h3>
@@ -1297,7 +1297,7 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
                 <button 
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-8 bg-black text-white rounded-full font-black uppercase tracking-[0.4em] text-[10px] shadow-2xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-4"
+                  className={`w-full py-8 rounded-full font-black uppercase tracking-[0.4em] text-[10px] shadow-2xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-4 ${styles.inverted}`}
                 >
                   {isSubmitting ? 'Syncing Talbot...' : 'Deploy Actor to Hub'}
                   <UserIcon size={18} />
@@ -1331,7 +1331,7 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
                     <img src={item.image_url} className="max-w-full max-h-full object-contain shadow-[0_50px_100px_-20px_rgba(0,0,0,0.8)]" />
                   </div>
                   
-                  <div className="lg:w-1/2 bg-black text-white p-12 lg:p-24 flex flex-col justify-center">
+                  <div className={`lg:w-1/2 p-12 lg:p-24 flex flex-col justify-center ${styles.inverted}`}>
                     <div className="max-w-xl">
                       <div className="flex items-center gap-4 mb-8">
                         <span className="px-4 py-1.5 bg-zinc-800 text-[10px] font-black uppercase tracking-[0.2em] rounded-md">{item.type}</span>

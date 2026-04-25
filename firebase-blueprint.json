@@ -119,11 +119,12 @@
         "company_id": { "type": "string" },
         "project_id": { "type": "string" },
         "actor_id": { "type": "string" },
+        "scene_number": { "type": "number" },
         "shot_number": { "type": "number" },
         "clothing_item_ids": { "type": "array", "items": { "type": "string" } },
         "created_at": { "type": "string", "format": "date-time" }
       },
-      "required": ["company_id", "project_id", "actor_id", "shot_number"]
+      "required": ["company_id", "project_id", "actor_id", "scene_number", "shot_number"]
     }
   },
   "firestore": {

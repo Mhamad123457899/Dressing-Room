@@ -1,0 +1,26 @@
+src/App.tsx:300:    button: "bg-black text-white hover:bg-zinc-800",
+src/App.tsx:415:              className={`px-3 sm:px-4 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-all flex items-center gap-1 sm:gap-2 ${activeView === 'closet' ? styles.button : 'hover:bg-black/5'}`}
+src/App.tsx:421:              className={`px-3 sm:px-4 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-all flex items-center gap-1 sm:gap-2 ${activeView === 'production' ? styles.button : 'hover:bg-black/5'}`}
+src/App.tsx:565:          <span className={`px-3 py-1 backdrop-blur-sm rounded-full text-[10px] font-bold uppercase tracking-wider shadow-sm ${theme === 'dark' ? 'bg-white/90 text-zinc-800' : 'bg-black/80 text-white'}`}>
+src/App.tsx:568:          <span className={`px-3 py-1 backdrop-blur-sm rounded-full text-[10px] font-bold uppercase tracking-wider shadow-sm ${theme === 'dark' ? 'bg-black/80 text-white' : 'bg-white/90 text-zinc-800'}`}>
+src/App.tsx:593:          className={`absolute top-4 right-4 p-2 backdrop-blur-md rounded-full shadow-lg transition-all hover:scale-110 border ${theme === 'dark' ? 'bg-white/40 text-white hover:bg-white/60 border-white/20' : 'bg-black/40 text-white hover:bg-black/60 border-black/20'}`}
+src/App.tsx:1126:                    <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center">
+src/App.tsx:1231:                            <span className="px-3 py-1 bg-black text-white rounded-full text-[10px] font-black uppercase tracking-widest leading-none">Shot {shot.shot_number}</span>
+src/App.tsx:1287:          <div className="fixed inset-0 z-[300] flex items-center justify-center p-6 bg-black/50 backdrop-blur-sm">
+src/App.tsx:1349:              className={`flex items-center justify-center gap-3 px-8 py-4 rounded-3xl font-black uppercase tracking-widest text-sm bg-zinc-900 text-white hover:bg-black transition-all shadow-xl active:scale-95 ${isSubmitting ? 'opacity-50' : ''}`}
+src/App.tsx:1482:                                 <span className="px-3 py-1 bg-black text-white rounded-full text-[8px] font-black uppercase tracking-widest">{t('Shot')} {shot.shot_number}</span>
+src/App.tsx:1525:          <div className="fixed inset-0 z-[300] flex items-center justify-center p-6 bg-black/50 backdrop-blur-sm">
+src/App.tsx:1734:        <div className="fixed inset-0 z-[400] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md">
+src/App.tsx:2468:                        className={`p-3 rounded-full transition-all ${styles.secondary} hover:bg-black hover:text-white`}
+src/App.tsx:2623:                        className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${styles.secondary} hover:bg-black hover:text-white`}
+src/App.tsx:2845:          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+src/App.tsx:3837:      <div dir="auto" className={`min-h-screen font-sans selection:bg-black selection:text-white transition-colors duration-300 ${styles.bg} ${styles.text}`}>
+src/App.tsx:3882:    <div dir="auto" className={`min-h-screen font-sans selection:bg-black selection:text-white transition-colors duration-300 ${styles.bg} ${styles.text}`}>
+src/App.tsx:4136:            className="fixed inset-0 z-[120] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6"
+src/App.tsx:4248:            className="fixed inset-0 z-[130] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6"
+src/App.tsx:4311:            className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6"
+src/App.tsx:4421:            className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6"
+src/App.tsx:4492:            className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6"
+src/App.tsx:4556:            className={`fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6`}
+src/App.tsx:4572:                  className={`w-12 h-12 rounded-full flex items-center justify-center border transition-all hover:bg-black hover:text-white ${styles.secondary}`}
+src/App.tsx:4598:                    <div className="p-6 rounded-2xl border bg-black/5 dark:bg-white/5 space-y-4">

@@ -27,7 +27,9 @@ import {
   Activity,
   Dna,
   History,
-  FileText
+  FileText,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
@@ -151,6 +153,7 @@ interface Shot {
   company_id: string;
   project_id: string;
   actor_id: string;
+  scene_number: number;
   shot_number: number;
   clothing_item_ids: string[];
   created_at: any;
@@ -264,7 +267,7 @@ class ErrorBoundary extends React.Component<any, any> {
             <p className="text-zinc-500 mb-8 leading-relaxed">{message}</p>
             <button 
               onClick={() => window.location.reload()}
-              className="w-full py-4 bg-black text-white rounded-2xl font-black uppercase tracking-widest hover:bg-zinc-800 transition-all shadow-lg"
+              className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest transition-all shadow-lg ${styles.button}`}
             >
               Refresh Page
             </button>
@@ -302,7 +305,9 @@ const THEMES = {
     muted: "text-zinc-400",
     border: "border-zinc-200",
     input: "bg-white border-zinc-200 focus:border-black text-zinc-900 placeholder:text-zinc-400",
-    modal: "bg-white"
+    modal: "bg-white text-zinc-900",
+    badge: "bg-black text-white",
+    inverted: "bg-black text-white"
   },
   dark: {
     bg: "bg-zinc-950",
@@ -315,7 +320,9 @@ const THEMES = {
     muted: "text-zinc-500",
     border: "border-zinc-800",
     input: "bg-zinc-900 border-zinc-800 focus:border-white text-zinc-100 placeholder:text-zinc-500",
-    modal: "bg-zinc-900"
+    modal: "bg-zinc-900 text-zinc-100",
+    badge: "bg-white text-black",
+    inverted: "bg-white text-black"
   },
   comfort: {
     bg: "bg-[#fdf6e3]",
@@ -328,7 +335,9 @@ const THEMES = {
     muted: "text-[#93a1a1]",
     border: "border-[#d3cbb7]",
     input: "bg-[#eee8d5] border-[#d3cbb7] focus:border-[#b58900] text-[#586e75] placeholder:text-[#93a1a1]",
-    modal: "bg-[#fdf6e3]"
+    modal: "bg-[#fdf6e3] text-[#586e75]",
+    badge: "bg-[#b58900] text-white",
+    inverted: "bg-[#b58900] text-white"
   },
   rose: {
     bg: "bg-[#fff1f2]",
@@ -341,7 +350,9 @@ const THEMES = {
     muted: "text-[#fda4af]",
     border: "border-[#fecdd3]",
     input: "bg-white border-[#fecdd3] focus:border-[#e11d48] text-[#9f1239] placeholder:text-[#fda4af]",
-    modal: "bg-[#fff1f2]"
+    modal: "bg-[#fff1f2] text-[#9f1239]",
+    badge: "bg-[#e11d48] text-white",
+    inverted: "bg-[#e11d48] text-white"
   }
 };
 
@@ -714,9 +725,11 @@ const ProductionBoard = ({
     name: "", weight: "", height: "", shoulder_size: "", waist_size: "" 
   });
   const [activeActorId, setActiveActorId] = useState<string | null>(null);
+  const [expandedScenes, setExpandedScenes] = useState<Record<string, boolean>>({});
   const [selectedShotClothingIds, setSelectedShotClothingIds] = useState<string[]>([]);
   const [shotClothingSearch, setShotClothingSearch] = useState("");
   const [shotNumber, setShotNumber] = useState(1);
+  const [sceneNumber, setSceneNumber] = useState(1);
 
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -893,13 +906,14 @@ const ProductionBoard = ({
     setShowAddActor(true);
   };
 
-  const handleAddShot = async (actorId: string, shotNumber: number, itemIds: string[]) => {
+  const handleAddShot = async (actorId: string, sceneNumber: number, shotNumber: number, itemIds: string[]) => {
     if (!selectedProject) return;
     const finalCompanyId = currentCompany ? currentCompany.id : selectedProject.company_id;
     if (!finalCompanyId) return;
     try {
       if (editingShot) {
         await updateDoc(doc(db, "shots", editingShot.id), {
+          scene_number: sceneNumber,
           shot_number: shotNumber,
           clothing_item_ids: itemIds,
           updated_at: Timestamp.now()
@@ -910,6 +924,7 @@ const ProductionBoard = ({
           company_id: finalCompanyId,
           project_id: selectedProject.id,
           actor_id: actorId,
+          scene_number: sceneNumber,
           shot_number: shotNumber,
           clothing_item_ids: itemIds,
           created_at: Timestamp.now()
@@ -925,6 +940,7 @@ const ProductionBoard = ({
   const handleEditShot = (shot: Shot) => {
     setEditingShot(shot);
     setShotNumber(shot.shot_number);
+    setSceneNumber(shot.scene_number || 1);
     setSelectedShotClothingIds(shot.clothing_item_ids);
     setActiveActorId(shot.actor_id);
   };
@@ -992,7 +1008,15 @@ const ProductionBoard = ({
   };
 
   if (selectedProject && selectedActor) {
-    const actorShots = shots.filter(s => s.actor_id === selectedActor.id).sort((a,b) => a.shot_number - b.shot_number);
+    const actorShots = shots.filter(s => s.actor_id === selectedActor.id).sort((a,b) => (a.scene_number || 1) - (b.scene_number || 1) || a.shot_number - b.shot_number);
+    
+    // Group shots by scene
+    const shotsByScene = actorShots.reduce((acc, shot) => {
+      const scene = shot.scene_number || 1;
+      if (!acc[scene]) acc[scene] = [];
+      acc[scene].push(shot);
+      return acc;
+    }, {} as Record<number, Shot[]>);
     
     // Dedicated Full-Screen "Add Shot" Selection Page
     if (activeActorId) {
@@ -1004,14 +1028,37 @@ const ProductionBoard = ({
                 onClick={() => {
                   setActiveActorId(null);
                   setSelectedShotClothingIds([]);
+                  setEditingShot(null);
                 }}
                 className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full flex-shrink-0 flex items-center justify-center border shadow-sm transition-all active:scale-95 ${styles.secondary}`}
               >
                 <X size={24} />
               </button>
-              <div className="min-w-0">
+              <div className="flex flex-col gap-2 min-w-0">
                 <h2 className="text-2xl sm:text-4xl font-black tracking-tighter truncate">{t('Select Items')}</h2>
-                <p className={`text-[10px] sm:text-sm truncate ${styles.accent}`}>{t('Shot')} {shotNumber} {t('for')} {selectedActor.name}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[10px] sm:text-sm font-black uppercase tracking-widest ${styles.accent}`}>{t('Scene')}:</span>
+                    <input 
+                      type="number" 
+                      min="1"
+                      className={`w-16 px-2 py-1 text-sm font-black rounded-lg border focus:outline-none focus:border-blue-500 bg-transparent ${styles.input}`}
+                      value={sceneNumber}
+                      onChange={e => setSceneNumber(parseInt(e.target.value) || 1)}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[10px] sm:text-sm font-black uppercase tracking-widest ${styles.accent}`}>{t('Shot')}:</span>
+                    <input 
+                      type="number" 
+                      min="1"
+                      className={`w-16 px-2 py-1 text-sm font-black rounded-lg border focus:outline-none focus:border-blue-500 bg-transparent ${styles.input}`}
+                      value={shotNumber}
+                      onChange={e => setShotNumber(parseInt(e.target.value) || 1)}
+                    />
+                  </div>
+                  <span className={`text-[10px] sm:text-sm truncate ${styles.accent} ml-2`}>{t('for')} {selectedActor.name}</span>
+                </div>
               </div>
             </div>
 
@@ -1019,7 +1066,7 @@ const ProductionBoard = ({
               <div className="flex px-4 sm:px-8 py-3 sm:py-4 rounded-2xl sm:rounded-3xl border shadow-sm items-center gap-3 sm:gap-4 flex-1 xl:flex-none justify-center">
                 <div className="text-right">
                   <p className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest opacity-50">{t('Picked')}</p>
-                  <p className="text-lg sm:text-xl font-black text-blue-500">{selectedShotClothingIds.length} / 2</p>
+                  <p className="text-lg sm:text-xl font-black text-blue-500">{selectedShotClothingIds.length}</p>
                 </div>
                 <div className="h-8 sm:h-10 w-px bg-zinc-200" />
                 <div className="text-right">
@@ -1030,7 +1077,7 @@ const ProductionBoard = ({
 
               <button 
                 onClick={() => {
-                  handleAddShot(selectedActor.id, shotNumber, selectedShotClothingIds);
+                  handleAddShot(selectedActor.id, sceneNumber, shotNumber, selectedShotClothingIds);
                   setActiveActorId(null);
                   setSelectedShotClothingIds([]);
                 }}
@@ -1048,7 +1095,7 @@ const ProductionBoard = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-8">
             {(clothes || []).map(item => {
               const isSelected = (selectedShotClothingIds || []).includes(item.id);
-              const canSelect = isSelected || (selectedShotClothingIds || []).length < 2;
+              const canSelect = true;
               
               return (
                 <motion.div 
@@ -1156,66 +1203,121 @@ const ProductionBoard = ({
           {/* Actor Shots */}
           <div className="lg:col-span-3 space-y-8">
             <div className="flex justify-between items-center">
-              <h3 className="text-2xl font-black tracking-tighter">{t('Production Shots')}</h3>
+              <h3 className="text-2xl font-black tracking-tighter">{t('Production Scene')}</h3>
               {!isViewOnly && (
                 <button 
                   onClick={() => {
+                    setEditingShot(null);
                     setActiveActorId(selectedActor.id);
-                    setShotNumber(actorShots.length + 1);
+                    setShotNumber(1);
+                    if (actorShots.length > 0) {
+                      const maxScene = Math.max(...actorShots.map(s => s.scene_number || 1));
+                      setSceneNumber(maxScene + 1);
+                    } else {
+                      setSceneNumber(1);
+                    }
                   }}
                   className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-xs ${styles.button}`}
                 >
-                  <Plus size={16} /> {t('Add New Shot')}
+                  <Plus size={16} /> {t('Add New Scene')}
                 </button>
               )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-              {actorShots.map(shot => (
-                <motion.div 
-                  key={shot.id} 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className={`p-6 rounded-[2rem] border overflow-hidden ${styles.card}`}
-                >
-                    <div className="flex items-center gap-2">
-                      <span className="px-3 py-1 bg-blue-500 text-white rounded-full text-[10px] font-black uppercase tracking-widest">Shot {shot.shot_number}</span>
-                      {!isViewOnly && (
-                        <div className="flex gap-2">
-                          <button onClick={() => handleEditShot(shot)} className={`p-1.5 rounded-lg border ${styles.secondary} hover:text-blue-500 transition-colors`}>
-                            <Edit2 size={12} />
-                          </button>
-                          <button onClick={() => handleDeleteShot(shot.id)} className={`p-1.5 rounded-lg border ${styles.secondary} hover:text-red-500 transition-colors`}>
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
-                      )}
+            <div className="space-y-4">
+              {Object.entries(shotsByScene).map(([sceneNum, sceneShots]) => {
+                const isExpanded = expandedScenes[sceneNum];
+                return (
+                <div key={sceneNum} className={`rounded-[2rem] border overflow-hidden ${styles.card}`}>
+                  <div 
+                    onClick={() => setExpandedScenes(prev => ({...prev, [sceneNum]: !prev[sceneNum]}))}
+                    className={`flex flex-col sm:flex-row sm:items-center justify-between p-6 cursor-pointer transition-colors gap-4 ${isExpanded ? styles.bg : 'hover:opacity-80'}`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <h4 className="text-xl font-black uppercase tracking-widest text-zinc-400">Scene {sceneNum}</h4>
+                      <span className="text-xs font-bold px-3 py-1 bg-black/5 dark:bg-white/5 rounded-full">{sceneShots.length} Shots</span>
                     </div>
-                  
-                  <div className={`grid gap-3 ${(shot.clothing_item_ids || []).length > 2 ? 'grid-cols-2' : 'grid-cols-1 sm:grid-cols-2'}`}>
-                    {(shot.clothing_item_ids || []).map(itemId => {
-                      const item = (clothes || []).find(c => String(c.id) === String(itemId));
-                      if (!item) return (
-                        <div key={itemId} className="p-4 rounded-xl bg-zinc-100 border border-dashed flex flex-col items-center justify-center text-center">
-                          <AlertCircle size={16} className="text-zinc-300 mb-1" />
-                          <p className="text-[8px] font-bold opacity-30">Item sync error</p>
-                        </div>
-                      );
-                      return (
-                        <div key={itemId} className="group relative">
-                          <div className="aspect-[3/4] rounded-2xl overflow-hidden border shadow-sm group-hover:shadow-md transition-all">
-                            <img src={item.image_url} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" referrerPolicy="no-referrer" />
-                          </div>
-                          <div className="p-3">
-                            <p className="text-[10px] font-black uppercase tracking-widest opacity-50 mb-1">{item.type || 'Piece'}</p>
-                            <p className="text-xs font-bold truncate">{item.name || 'Untitled'}</p>
-                          </div>
-                        </div>
-                      );
-                    })}
+                    <div className="flex items-center gap-4">
+                      {!isViewOnly && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingShot(null);
+                            setActiveActorId(selectedActor.id);
+                            setSceneNumber(parseInt(sceneNum));
+                            const maxShot = sceneShots.length > 0 ? Math.max(...sceneShots.map(s => s.shot_number)) : 0;
+                            setShotNumber(maxShot + 1);
+                          }}
+                          className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest ${styles.secondary}`}
+                        >
+                          <Plus size={12} /> {t('Add New Shot')}
+                        </button>
+                      )}
+                      <div className={`p-2 rounded-full border ${styles.secondary}`}>
+                         {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                      </div>
+                    </div>
                   </div>
-                </motion.div>
-              ))}
+                  
+                  {isExpanded && (
+                    <div className="p-6 pt-0 border-t border-zinc-100/10 mt-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 pt-6">
+                    {sceneShots.map(shot => (
+                      <motion.div 
+                        key={shot.id} 
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={`p-6 rounded-[2rem] border overflow-hidden relative ${styles.card}`}
+                      >
+                          <div className="flex items-center justify-between gap-2 mb-6">
+                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest leading-none ${styles.inverted}`}>Shot {shot.shot_number}</span>
+                            {!isViewOnly && (
+                              <div className="flex gap-2">
+                                <button onClick={() => handleEditShot(shot)} className={`p-1.5 rounded-lg border ${styles.secondary} hover:text-blue-500 transition-colors`}>
+                                  <Edit2 size={12} />
+                                </button>
+                                <button onClick={() => handleDeleteShot(shot.id)} className={`p-1.5 rounded-lg border ${styles.secondary} hover:text-red-500 transition-colors`}>
+                                  <Trash2 size={12} />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        
+                        <div className={`grid gap-3 ${(shot.clothing_item_ids || []).length > 2 ? 'grid-cols-2' : 'grid-cols-1 sm:grid-cols-2'}`}>
+                          {(shot.clothing_item_ids || []).map(itemId => {
+                            const item = (clothes || []).find(c => String(c.id) === String(itemId));
+                            if (!item) return (
+                              <div key={itemId} className="p-4 rounded-xl bg-zinc-100 border border-dashed flex flex-col items-center justify-center text-center">
+                                <AlertCircle size={16} className="text-zinc-300 mb-1" />
+                                <p className="text-[8px] font-bold opacity-30">Item sync error</p>
+                              </div>
+                            );
+                            return (
+                              <div key={itemId} className="group relative">
+                                <div className="aspect-[3/4] rounded-2xl overflow-hidden border shadow-sm group-hover:shadow-md transition-all">
+                                  <img src={item.image_url} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" referrerPolicy="no-referrer" />
+                                </div>
+                                <div className="p-3">
+                                  <p className="text-[10px] font-black uppercase tracking-widest opacity-50 mb-1">{item.type || 'Piece'}</p>
+                                  <p className="text-xs font-bold truncate">{item.name || 'Untitled'}</p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {(!shot.clothing_item_ids || shot.clothing_item_ids.length === 0) && (
+                          <div className={`py-6 text-center border border-dashed rounded-2xl ${styles.muted}`}>
+                            <p className="text-xs font-bold uppercase tracking-widest opacity-50">No items selected</p>
+                          </div>
+                        )}
+                      </motion.div>
+                    ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                );
+              })}
               {actorShots.length === 0 && (
                 <div className={`col-span-full py-20 text-center border-2 border-dashed rounded-[2rem] ${styles.muted}`}>
                   No shots added to this profile yet.
@@ -1289,7 +1391,7 @@ const ProductionBoard = ({
             <button 
               onClick={exportPDF}
               disabled={isSubmitting}
-              className={`flex items-center justify-center gap-3 px-8 py-4 rounded-3xl font-black uppercase tracking-widest text-sm bg-zinc-900 text-white hover:bg-black transition-all shadow-xl active:scale-95 ${isSubmitting ? 'opacity-50' : ''}`}
+              className={`flex items-center justify-center gap-3 px-8 py-4 rounded-3xl font-black uppercase tracking-widest text-sm transition-all shadow-xl active:scale-95 ${styles.button} ${isSubmitting ? 'opacity-50' : ''}`}
             >
               <Download size={20} /> {isSubmitting ? t('Generating...') : t('Export PDF')}
             </button>
@@ -1355,7 +1457,13 @@ const ProductionBoard = ({
         {/* Hidden PDF content for export - Absolute positioned instead of hidden to allow capture */}
         <div className="fixed top-0 left-0 -z-50 pointer-events-none opacity-0 overflow-hidden h-0">
           {projectActors.map(actor => {
-            const actorShots = shots.filter(s => s.actor_id === actor.id).sort((a,b) => a.shot_number - b.shot_number);
+            const actorShots = shots.filter(s => s.actor_id === actor.id).sort((a,b) => (a.scene_number || 1) - (b.scene_number || 1) || a.shot_number - b.shot_number);
+            const shotsByScene = actorShots.reduce((acc, shot) => {
+              const scene = shot.scene_number || 1;
+              if (!acc[scene]) acc[scene] = [];
+              acc[scene].push(shot);
+              return acc;
+            }, {} as Record<number, Shot[]>);
             return (
               <div 
                 key={actor.id} 
@@ -1408,27 +1516,34 @@ const ProductionBoard = ({
                 {/* Shots Grid */}
                 <div className="flex-1">
                    <h3 className="text-sm font-black uppercase tracking-widest mb-6 border-l-4 border-blue-500 pl-4">{t('Selected Shots & Wardrobe')}</h3>
-                   <div className="grid grid-cols-2 gap-8">
-                     {actorShots.map(shot => (
-                       <div key={shot.id} className="p-6 rounded-3xl bg-zinc-50 border-2 border-zinc-100">
-                         <div className="flex justify-between items-center mb-4">
-                           <span className="px-3 py-1 bg-blue-500 text-white rounded-full text-[8px] font-black uppercase tracking-widest">{t('Shot')} {shot.shot_number}</span>
-                         </div>
-                         <div className="grid grid-cols-2 gap-4">
-                            {shot.clothing_item_ids.map(itemId => {
-                              const item = clothes.find(c => c.id === itemId);
-                              return item && (
-                                <div key={itemId} className="space-y-2">
-                                  <div className="aspect-[3/4] rounded-xl overflow-hidden border shadow-sm">
-                                    <img src={item.image_url} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                                  </div>
-                                  <div className="px-1">
-                                    <p className="text-[8px] font-black uppercase tracking-widest opacity-40 truncate">{t(item.type)}</p>
-                                    <p className="text-[10px] font-black truncate">{item.name}</p>
-                                  </div>
-                                </div>
-                              );
-                            })}
+                   <div className="space-y-8">
+                     {Object.entries(shotsByScene).map(([sceneNum, sceneShots]) => (
+                       <div key={sceneNum}>
+                         <h4 className="text-xs font-black uppercase tracking-widest opacity-40 mb-4 bg-zinc-100 px-4 py-2 rounded-lg inline-block">Scene {sceneNum}</h4>
+                         <div className="grid grid-cols-2 gap-8">
+                           {sceneShots.map(shot => (
+                             <div key={shot.id} className="p-6 rounded-3xl bg-zinc-50 border-2 border-zinc-100">
+                               <div className="flex justify-between items-center mb-4">
+                                 <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${styles.inverted}`}>{t('Shot')} {shot.shot_number}</span>
+                               </div>
+                               <div className="grid grid-cols-2 gap-4">
+                                  {shot.clothing_item_ids.map(itemId => {
+                                    const item = clothes.find(c => c.id === itemId);
+                                    return item && (
+                                      <div key={itemId} className="space-y-2">
+                                        <div className="aspect-[3/4] rounded-xl overflow-hidden border shadow-sm">
+                                          <img src={item.image_url} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                        </div>
+                                        <div className="px-1">
+                                          <p className="text-[8px] font-black uppercase tracking-widest opacity-40 truncate">{t(item.type)}</p>
+                                          <p className="text-[10px] font-black truncate">{item.name}</p>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                               </div>
+                             </div>
+                           ))}
                          </div>
                        </div>
                      ))}
@@ -1548,7 +1663,7 @@ const ProductionBoard = ({
       </div>
 
       {showAddProject && createPortal(
-        <div className={`fixed inset-0 z-[300] overflow-y-auto ${styles.bg}`}>
+        <div className={`fixed inset-0 z-[300] overflow-y-auto ${styles.bg} ${styles.text}`}>
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -2338,7 +2453,7 @@ const AdminPanel = ({
                   </div>
                   <button 
                     type="submit"
-                    className="w-full py-4 bg-black text-white rounded-2xl font-black uppercase tracking-widest hover:bg-zinc-800 transition-all shadow-xl"
+                    className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest transition-all shadow-xl ${styles.button}`}
                   >
                     {editingCollection ? 'Update Collection' : 'Create Collection'}
                   </button>
@@ -2477,7 +2592,7 @@ const AdminPanel = ({
                   </div>
                   <button 
                     type="submit"
-                    className="w-full py-4 bg-black text-white rounded-2xl font-black uppercase tracking-widest hover:bg-zinc-800 transition-all shadow-xl"
+                    className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest transition-all shadow-xl ${styles.button}`}
                   >
                     {editingClient ? 'Update Client Account' : 'Save Client Account'}
                   </button>
