@@ -745,6 +745,7 @@ const ProductionBoard = ({
   const [shotClothingSearch, setShotClothingSearch] = useState("");
   const [shotNumber, setShotNumber] = useState(1);
   const [sceneNumber, setSceneNumber] = useState(1);
+  const [visibleClothesSelectionCount, setVisibleClothesSelectionCount] = useState(20);
 
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -2223,7 +2224,8 @@ const AdminPanel = ({
 }) => {
   const { theme } = useTheme();
   const styles = THEMES[theme];
-  const [activeTab, setActiveTab] = useState<"clothes" | "collections" | "rentals" | "clients" | "production">("clothes");
+  const [activeTab, setActiveTab] = useState<"clothes" | "collections" | "rentals" | "clients" | "production" | "settings">("clothes");
+  const [companyLogoUrl, setCompanyLogoUrl] = useState(currentCompany?.logo_url || "");
   const [rentalFilter, setRentalFilter] = useState<"active" | "all">("active");
   const [rentalSearch, setRentalSearch] = useState("");
   const [clientSearch, setClientSearch] = useState("");
@@ -2553,6 +2555,14 @@ const AdminPanel = ({
           >
             Production Projects
           </button>
+          <button 
+            onClick={() => setActiveTab("settings")}
+            className={`px-6 py-2 rounded-full font-bold transition-all ${
+              activeTab === "settings" ? styles.button : `${styles.accent} hover:opacity-80`
+            }`}
+          >
+            Settings
+          </button>
         </div>
 
         {activeTab === "clothes" ? (
@@ -2784,6 +2794,62 @@ const AdminPanel = ({
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+          </div>
+        ) : activeTab === "settings" ? (
+          <div className="max-w-2xl mx-auto">
+            <div className={`p-10 rounded-[3rem] border shadow-2xl ${styles.card}`}>
+              <div className="flex items-center gap-4 mb-10">
+                <div className={`p-4 rounded-3xl ${styles.secondary}`}>
+                  <Settings size={32} />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black tracking-tight">Closet Settings</h3>
+                  <p className={styles.muted}>Manage your company profile and preferences.</p>
+                </div>
+              </div>
+
+              <div className="space-y-8">
+                <div>
+                  <label className={`block text-[10px] font-bold uppercase tracking-widest mb-3 ${styles.muted}`}>Company Logo URL</label>
+                  <div className="flex flex-col gap-6">
+                    <input 
+                      type="url"
+                      value={companyLogoUrl}
+                      onChange={(e) => setCompanyLogoUrl(e.target.value)}
+                      className={`w-full px-6 py-4 rounded-2xl outline-none border focus:ring-2 focus:ring-black transition-all ${styles.input}`}
+                      placeholder="https://example.com/logo.png"
+                    />
+                    
+                    {companyLogoUrl && (
+                      <div className="flex flex-col items-center gap-4 p-8 rounded-[2rem] border-2 border-dashed border-zinc-200">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Logo Preview</p>
+                        <div className={`w-32 h-32 rounded-3xl overflow-hidden border shadow-lg ${styles.secondary}`}>
+                          <img src={companyLogoUrl} alt="Preview" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                        </div>
+                      </div>
+                    )}
+
+                    <button 
+                      onClick={async () => {
+                        if (!currentCompany?.id) return;
+                        // Use local isSubmitting logic if needed, but here we can just use the prop or a local state if I add one
+                        try {
+                          await updateDoc(doc(db, "companies", currentCompany.id), {
+                            logo_url: companyLogoUrl
+                          });
+                          setNotification({ message: "Logo updated successfully!", type: "success" });
+                        } catch (err) {
+                          setNotification({ message: "Failed to update logo.", type: "error" });
+                        }
+                      }}
+                      className={`w-full py-5 rounded-2xl font-black uppercase tracking-widest transition-all shadow-xl active:scale-95 ${styles.button}`}
+                    >
+                      Update Logo
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -3403,6 +3469,8 @@ const CompanyPortal = ({ onLogin }: { onLogin: (company: Company) => void }) => 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
+  const [logoUrl, setLogoUrl] = useState('');
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -3456,6 +3524,7 @@ const CompanyPortal = ({ onLogin }: { onLogin: (company: Company) => void }) => 
             name,
             slug,
             password,
+            logo_url: logoUrl,
             created_at: Timestamp.now()
           };
           const docRef = await addDoc(collection(db, "companies"), newCompany);
@@ -3510,6 +3579,19 @@ const CompanyPortal = ({ onLogin }: { onLogin: (company: Company) => void }) => 
               placeholder="••••••••"
             />
           </div>
+
+          {mode === 'setup' && (
+            <div>
+              <label className={`block text-[10px] font-bold uppercase tracking-widest mb-2 ${styles.text} opacity-70`}>Company Logo URL (Optional)</label>
+              <input 
+                type="url"
+                value={logoUrl}
+                onChange={(e) => setLogoUrl(e.target.value)}
+                className={`w-full py-4 px-6 rounded-2xl font-bold focus:outline-none focus:ring-2 transition-all border ${styles.input} ${theme === 'dark' ? 'focus:ring-white' : 'focus:ring-black'}`}
+                placeholder="https://example.com/logo.png"
+              />
+            </div>
+          )}
 
           {error && (
             <div className="flex items-center gap-2 text-rose-500 text-sm font-bold bg-rose-500/10 p-4 rounded-2xl">
@@ -3577,7 +3659,6 @@ function App() {
   const [filterType, setFilterType] = useState("All");
   const [availabilityFilter, setAvailabilityFilter] = useState<"all" | "available" | "rented">("all");
   const [visibleClothesCount, setVisibleClothesCount] = useState(24);
-  const [visibleClothesSelectionCount, setVisibleClothesSelectionCount] = useState(20);
   const [activeActorId, setActiveActorId] = useState<string | null>(null);
 
   // Rental Modal State

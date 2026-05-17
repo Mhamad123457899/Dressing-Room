@@ -711,6 +711,36 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
                   </section>
 
                   <section>
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.3em] mb-8 text-zinc-400 border-b pb-4">Brand Configuration</h3>
+                    <div className="p-8 rounded-[3rem] bg-white border-2 border-zinc-100 shadow-sm space-y-6">
+                      <div>
+                        <label className="block text-[9px] font-black uppercase tracking-widest text-zinc-400 mb-3">Custom Logo URL</label>
+                        <div className="flex flex-col gap-4">
+                          <input 
+                            type="url"
+                            defaultValue={selectedCompany.logo_url}
+                            onBlur={async (e) => {
+                              const newUrl = e.target.value;
+                              if (newUrl !== selectedCompany.logo_url) {
+                                try {
+                                  await updateDoc(doc(db, "companies", selectedCompany.id), {
+                                    logo_url: newUrl
+                                  });
+                                } catch (err) {
+                                  console.error("Failed to update company logo:", err);
+                                }
+                              }
+                            }}
+                            className="w-full px-5 py-3 rounded-2xl bg-zinc-50 border border-zinc-100 outline-none focus:border-black text-xs font-bold transition-all"
+                            placeholder="https://..."
+                          />
+                          <p className="text-[8px] text-zinc-400 font-medium leading-relaxed italic">The image will update automatically across all terminal nodes when changed.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section>
                     <h3 className="text-[10px] font-black uppercase tracking-[0.3em] mb-8 text-zinc-400 border-b pb-4">Hardware Signature</h3>
                     <div className={`p-10 rounded-[3rem] shadow-2xl relative overflow-hidden ${styles.inverted}`}>
                       <div className="relative z-10 space-y-8">
