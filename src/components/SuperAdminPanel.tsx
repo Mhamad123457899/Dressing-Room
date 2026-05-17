@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Users, 
   Package, 
@@ -40,6 +41,7 @@ interface SuperAdminPanelProps {
   rentals: any[];
   actors?: any[];
   shots?: any[];
+  scenes?: any[];
   visits: any[];
   onDeleteProject: (id: string) => void;
   onDeleteCompany: (id: string) => void;
@@ -55,6 +57,7 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
   rentals,
   actors = [],
   shots = [],
+  scenes = [],
   visits,
   onDeleteProject,
   onDeleteCompany,
@@ -68,7 +71,9 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [selectedActorName, setSelectedActorName] = useState<string | null>(null);
   const [expandedScenes, setExpandedScenes] = useState<Record<string, boolean>>({});
+  const [fullscreenSceneNum, setFullscreenSceneNum] = useState<string | null>(null);
   const [fullscreenClothingId, setFullscreenClothingId] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; title: string; message: string; onSelect: () => void } | null>(null);
   const [showAddProject, setShowAddProject] = useState(false);
   const [showAddActor, setShowAddActor] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -86,6 +91,7 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
     chest: '',
     waist: ''
   });
+  const [visibleClothesCount, setVisibleClothesCount] = useState(24);
 
   const formatSessionTime = (startTime: any) => {
     if (!startTime) return 'N/A';
@@ -142,11 +148,10 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
     ? projectRentals.filter(r => (r.user_name || r.actor_name || 'Generic Actor') === selectedActorName || r.actor_id === selectedActor?.id) 
     : [];
   const selectedActorShots = selectedActor?.id ? projectShotsData.filter(s => s.actor_id === selectedActor.id).sort((a: any, b: any) => (a.scene_number || 1) - (b.scene_number || 1) || a.shot_number - b.shot_number) : [];
+  const selectedActorScenes = selectedActor?.id ? (scenes || []).filter(s => s.actor_id === selectedActor.id).sort((a: any, b: any) => a.scene_number - b.scene_number) : [];
 
-  const shotsByScene = selectedActorShots.reduce((acc: Record<string, any[]>, shot) => {
-    const scene = (shot.scene_number || 1).toString();
-    if (!acc[scene]) acc[scene] = [];
-    acc[scene].push(shot);
+  const shotsByScene = selectedActorScenes.reduce((acc: Record<string, any[]>, scene) => {
+    acc[scene.scene_number.toString()] = selectedActorShots.filter(s => (s.scene_number || 1) === scene.scene_number);
     return acc;
   }, {});
 
@@ -426,7 +431,7 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
               <div key={company.id} className={`p-6 sm:p-8 rounded-[2.5rem] border shadow-lg ${styles.card}`}>
                 <div className="flex justify-between items-start mb-6">
                   <div className={`w-16 h-16 rounded-3xl flex items-center justify-center overflow-hidden flex-shrink-0 ${styles.secondary}`}>
-                    {company.logo_url ? <img src={company.logo_url} className="w-full h-full object-cover" /> : <Users size={32} />}
+                    {company.logo_url ? <img src={company.logo_url} className="w-full h-full object-cover" loading="lazy" decoding="async" /> : <Users size={32} />}
                   </div>
                   <div className="flex flex-col items-end gap-2 overflow-hidden">
                     {company.is_online ? (
@@ -554,32 +559,53 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
         )}
 
         {activeTab === 'clothes' && (
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {filteredClothes.map(item => {
-              const company = companies.find(c => c.id === item.company_id);
-              return (
-                <div key={item.id} className={`group rounded-3xl overflow-hidden border shadow-sm ${styles.card}`}>
-                  <div className="aspect-[3/4] relative overflow-hidden bg-zinc-100">
-                    <img src={item.image_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                    <div className="absolute top-2 left-2 flex flex-col gap-1">
-                      <span className="px-2 py-0.5 rounded-lg bg-black/60 text-white text-[8px] font-bold uppercase truncate max-w-[80px]">
-                        {company?.name}
-                      </span>
+          <div className="space-y-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              {filteredClothes.slice(0, visibleClothesCount).map(item => {
+                const company = companies.find(c => c.id === item.company_id);
+                return (
+                  <div key={item.id} className={`group rounded-3xl overflow-hidden border shadow-sm ${styles.card}`}>
+                    <div className="aspect-[3/4] relative overflow-hidden bg-zinc-100 shimmer">
+                      <img 
+                        src={item.image_url} 
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                        loading="lazy" 
+                        decoding="async"
+                        onLoad={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.parentElement?.classList.remove('shimmer');
+                        }}
+                      />
+                      <div className="absolute top-2 left-2 flex flex-col gap-1">
+                        <span className="px-2 py-0.5 rounded-lg bg-black/60 text-white text-[8px] font-bold uppercase truncate max-w-[80px]">
+                          {company?.name}
+                        </span>
+                      </div>
+                      <button 
+                        onClick={() => handleGlobalDeleteClothing(item.id)}
+                        className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Trash2 size={12} />
+                      </button>
                     </div>
-                    <button 
-                      onClick={() => handleGlobalDeleteClothing(item.id)}
-                      className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <Trash2 size={12} />
-                    </button>
+                    <div className="p-3">
+                      <h5 className="text-[11px] font-bold truncate">{item.name}</h5>
+                      <p className={`text-[9px] ${styles.muted}`}>{item.type} • {item.model}</p>
+                    </div>
                   </div>
-                  <div className="p-3">
-                    <h5 className="text-[11px] font-bold truncate">{item.name}</h5>
-                    <p className={`text-[9px] ${styles.muted}`}>{item.type} • {item.model}</p>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
+            {filteredClothes.length > visibleClothesCount && (
+              <div className="flex justify-center pt-8">
+                <button
+                  onClick={() => setVisibleClothesCount(prev => prev + 48)}
+                  className={`px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs transition-all border-2 border-transparent active:scale-95 ${styles.secondary}`}
+                >
+                  Load More Assets ({filteredClothes.length - visibleClothesCount} remaining)
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -597,7 +623,7 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
                  return (
                    <div key={rental.id} className={`p-4 rounded-2xl border flex items-center gap-4 ${styles.card}`}>
                      <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0">
-                       <img src={rental.image_url} className="w-full h-full object-cover" />
+                       <img src={rental.image_url} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                      </div>
                      <div className="flex-1">
                        <h5 className="text-sm font-bold">{rental.clothing_name}</h5>
@@ -637,7 +663,7 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
                 <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                   <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-black flex items-center justify-center overflow-hidden shadow-lg flex-shrink-0">
                     {selectedCompany.logo_url ? (
-                      <img src={selectedCompany.logo_url} className="w-full h-full object-cover" />
+                      <img src={selectedCompany.logo_url} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                     ) : (
                       <Users size={16} className="text-white sm:w-5 sm:h-5" />
                     )}
@@ -731,8 +757,17 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
                           className="group flex flex-col gap-4 sm:gap-6 min-w-0 cursor-pointer"
                           onClick={() => setFullscreenClothingId(item.id)}
                         >
-                          <div className="aspect-[3/4] rounded-[2rem] sm:rounded-[2.5rem] overflow-hidden bg-zinc-200 border-2 sm:border-4 border-white shadow-lg transition-all group-hover:border-black group-hover:shadow-2xl hover:scale-[1.02]">
-                            <img src={item.image_url} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                          <div className="aspect-[3/4] rounded-[2rem] sm:rounded-[2.5rem] overflow-hidden bg-zinc-200 border-2 sm:border-4 border-white shadow-lg transition-all group-hover:border-black group-hover:shadow-2xl hover:scale-[1.02] shimmer">
+                            <img 
+                              src={item.image_url} 
+                              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                              loading="lazy" 
+                              decoding="async"
+                              onLoad={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.parentElement?.classList.remove('shimmer');
+                              }}
+                            />
                           </div>
                           <div className="px-2 min-w-0">
                             <p className="text-xs sm:text-sm font-black uppercase tracking-tight text-black mb-1 truncate">{item.name}</p>
@@ -974,8 +1009,17 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-8">
               {projectClothes.map(item => (
                 <div key={item.id} className="group flex flex-col gap-4 sm:gap-6 min-w-0 cursor-pointer" onClick={() => setFullscreenClothingId(item.id)}>
-                  <div className="aspect-[3/4] rounded-[2rem] sm:rounded-[2.5rem] overflow-hidden bg-zinc-200 border-2 sm:border-4 border-white shadow-lg transition-all group-hover:border-black group-hover:shadow-2xl hover:scale-[1.02]">
-                    <img src={item.image_url} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                  <div className="aspect-[3/4] rounded-[2rem] sm:rounded-[2.5rem] overflow-hidden bg-zinc-200 border-2 sm:border-4 border-white shadow-lg transition-all group-hover:border-black group-hover:shadow-2xl hover:scale-[1.02] shimmer">
+                    <img 
+                      src={item.image_url} 
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                      loading="lazy" 
+                      decoding="async"
+                      onLoad={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.parentElement?.classList.remove('shimmer');
+                      }}
+                    />
                   </div>
                   <div className="px-2 min-w-0">
                     <p className="text-xs sm:text-sm font-black uppercase tracking-tight text-black mb-1 truncate">{item.name}</p>
@@ -1010,151 +1054,133 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
             initial={{ opacity: 0, x: 50 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 50 }}
-            className="fixed inset-0 z-[600] bg-zinc-50 overflow-y-auto"
+            className="fixed inset-0 z-[600] bg-zinc-50 dark:bg-zinc-950 overflow-hidden flex flex-col"
           >
-             <div className="sticky top-0 z-50 bg-white border-b border-zinc-200 flex items-center justify-between px-4 sm:px-8 py-4 shadow-sm">
-              <div className="flex items-center gap-4">
-                <button onClick={() => setSelectedActorName(null)} className="p-3 hover:bg-zinc-100 rounded-2xl transition-colors border-2 border-transparent active:border-black">
-                  <X size={20} />
-                </button>
-                <div>
-                  <h2 className="text-lg font-black uppercase tracking-tight text-black">{selectedActorName}</h2>
-                  <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Character Costume Mapping</p>
+             <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center bg-zinc-100 dark:bg-zinc-900">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-black uppercase tracking-tighter">{selectedActorName}</h2>
                 </div>
-              </div>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => setSelectedActorName(null)}
+                    className={`p-2 rounded-xl transition-all active:scale-95 border border-zinc-200 dark:border-zinc-800 ${styles.secondary}`}
+                  >
+                    <X size={16} />
+                  </button>
+                  <button 
+                    onClick={() => setSelectedActorName(null)}
+                    className={`px-4 py-2 rounded-xl font-black uppercase tracking-widest text-xs transition-all border ${styles.secondary}`}
+                  >
+                    {t('Back')}
+                  </button>
+                </div>
             </div>
 
-            <div className="max-w-7xl mx-auto px-4 sm:px-8 py-16">
-              {/* Profile Header Stats */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-16">
-                <div className="p-6 rounded-[2.5rem] bg-white border-2 border-zinc-100 shadow-sm">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1">Total Items</p>
-                  <p className="text-2xl font-black tracking-tighter text-black">{selectedActorRentals.length}</p>
-                </div>
-                <div className="p-6 rounded-[2.5rem] bg-white border-2 border-zinc-100 shadow-sm">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1">Production Scene</p>
-                  <p className="text-2xl font-black tracking-tighter text-black">{Object.keys(shotsByScene).length}</p>
-                </div>
-                <div className="p-6 rounded-[2.5rem] bg-white border-2 border-zinc-100 shadow-sm">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1">Measurements</p>
-                  <p className="text-2xl font-black tracking-tighter text-black">{selectedActor?.height || 'N/A'}</p>
-                </div>
-                <div className="p-6 rounded-[2.5rem] bg-white border-2 border-zinc-100 shadow-sm">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1">Role Type</p>
-                  <p className="text-2xl font-black tracking-tighter text-black">Talent</p>
-                </div>
-              </div>
-
-              {/* Shots Section */}
-              {selectedActorShots.length > 0 && (
-                <div className="mb-20">
-                  <div className="flex items-center gap-4 mb-10">
-                    <Layers className="text-black" size={24} />
-                    <h3 className="text-2xl font-black uppercase italic tracking-tighter text-black">Allocated Scenes & Shots</h3>
+            <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+              <div className="max-w-7xl mx-auto">
+                {/* Profile Header Stats */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                  <div className="p-6 rounded-[2.5rem] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1">Total Items</p>
+                    <p className="text-2xl font-black tracking-tighter">{selectedActorRentals.length}</p>
                   </div>
-                  <div className="space-y-4">
-                    {Object.entries(shotsByScene).map(([sceneNum, sceneShots]: [string, any[]]) => {
-                      const isExpanded = expandedScenes[sceneNum];
-                      return (
-                        <div key={sceneNum} className="rounded-[2.5rem] border-2 border-zinc-100 bg-white overflow-hidden shadow-sm">
-                          <div 
-                            onClick={() => setExpandedScenes(prev => ({...prev, [sceneNum]: !prev[sceneNum]}))}
-                            className={`flex items-center justify-between p-6 cursor-pointer transition-colors ${isExpanded ? 'bg-zinc-50' : 'hover:bg-zinc-50/50'}`}
-                          >
-                            <div className="flex items-center gap-4">
-                              <span className={`px-4 py-1.5 text-[10px] font-black uppercase rounded-lg ${styles.inverted}`}>
-                                SCENE: {sceneNum.padStart(2, '0')}
-                              </span>
-                              <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">{sceneShots.length} Shots</span>
-                            </div>
-                            <div className="p-2 rounded-full border border-zinc-200">
-                              {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                            </div>
-                          </div>
-
-                          {isExpanded && (
-                            <div className="p-8 pt-4 border-t border-zinc-100">
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
-                                {sceneShots.map(shot => (
-                                  <div key={shot.id} className="p-6 rounded-[2.5rem] bg-zinc-50 border border-zinc-100">
-                                    <div className="flex justify-between items-start mb-6">
-                                      <div>
-                                        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Shot {shot.shot_number}</p>
-                                        <h4 className="text-lg font-black uppercase tracking-tighter">{shot.name || `Shot ${shot.shot_number}`}</h4>
-                                      </div>
-                                      <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest italic">{shot.day || 'Day 1'}</span>
-                                    </div>
-                                    
-                                    <div className="grid grid-cols-3 gap-3">
-                                      {shot.clothing_item_ids?.map((id: string) => {
-                                        const item = clothes.find(c => c.id === id);
-                                        return item ? (
-                                          <div key={id} className="aspect-[3/4] rounded-2xl overflow-hidden bg-white border-2 border-white shadow-sm ring-1 ring-zinc-200 cursor-pointer" onClick={() => setFullscreenClothingId(id)}>
-                                            <img src={item.image_url} className="w-full h-full object-cover" />
-                                          </div>
-                                        ) : null;
-                                      })}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                  <div className="p-6 rounded-[2.5rem] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1">Production Scene</p>
+                    <p className="text-2xl font-black tracking-tighter">{Object.keys(shotsByScene).length}</p>
+                  </div>
+                  <div className="p-6 rounded-[2.5rem] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1">Measurements</p>
+                    <p className="text-2xl font-black tracking-tighter">{selectedActor?.height || 'N/A'}</p>
+                  </div>
+                  <div className="p-6 rounded-[2.5rem] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1">Role Type</p>
+                    <p className="text-2xl font-black tracking-tighter">Talent</p>
                   </div>
                 </div>
-              )}
 
-              <div className="flex items-center gap-4 mb-10">
-                <ShoppingBag className="text-black" size={24} />
-                <h3 className="text-2xl font-black uppercase italic tracking-tighter text-black">Individual Assets</h3>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {selectedActorRentals.map(rental => {
-                  const item = clothes.find(c => c.id === rental.clothing_id);
-                  return (
-                    <div key={rental.id} className="group bg-white rounded-[3rem] border-2 border-zinc-100 overflow-hidden shadow-sm hover:shadow-2xl transition-all">
-                      <div className="aspect-[4/5] relative cursor-pointer" onClick={() => setFullscreenClothingId(item?.id)}>
-                        {item && <img src={item.image_url} className="w-full h-full object-cover" />}
-                        <div className="absolute top-6 left-6 flex flex-col gap-2">
-                          <span className={`px-4 py-2 text-[10px] font-black uppercase rounded-full shadow-lg ${styles.inverted}`}>
-                            SHOT: {rental.shot || 'NA'}
-                          </span>
-                          <span className="px-4 py-2 bg-white/90 backdrop-blur-md text-black text-[10px] font-black uppercase rounded-full border border-black/10 shadow-lg">
-                            {rental.status}
-                          </span>
-                        </div>
-                        <div 
-                          className="absolute bottom-6 right-6 p-4 bg-white/90 backdrop-blur-md rounded-2xl shadow-xl hover:scale-110 transition-all opacity-0 group-hover:opacity-100"
-                        >
-                          <Maximize2 size={20} />
-                        </div>
-                      </div>
-                      <div className="p-8">
-                        <h4 className="text-xl font-black uppercase tracking-tighter mb-4">{item?.name || 'Unknown Item'}</h4>
-                        <div className="grid grid-cols-2 gap-4 pt-6 border-t font-bold text-[10px] uppercase tracking-widest text-zinc-400">
-                          <div>
-                            <p className="mb-1">Size</p>
-                            <p className="text-black">{rental.size}</p>
-                          </div>
-                          <div>
-                            <p className="mb-1">Type</p>
-                            <p className="text-black">{item?.type || 'Clothing'}</p>
-                          </div>
-                          <div className="col-span-2">
-                            <p className="mb-1">Allocated On</p>
-                            <p className="text-black">
-                              {rental.rental_date ? (typeof rental.rental_date === 'string' ? rental.rental_date : new Date(rental.rental_date.toDate()).toLocaleDateString()) : 'N/A'}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
+                {/* Shots Section */}
+                {selectedActorScenes.length > 0 && (
+                  <div className="mb-20">
+                    <div className="flex items-center gap-4 mb-6">
+                      <Layers className="text-black" size={24} />
+                      <h3 className="text-lg font-black uppercase tracking-tighter">Allocated Scenes & Shots</h3>
                     </div>
-                  )
-                })}
+                    <div className="space-y-4">
+                      {selectedActorScenes.map((scene) => {
+                        const sceneNum = scene.scene_number.toString();
+                        const sceneShots = shotsByScene[sceneNum] || [];
+                        return (
+                          <div key={scene.id} className="rounded-[2rem] border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden shadow-sm">
+                            <div 
+                              className={`flex items-center justify-between p-6 cursor-pointer transition-all hover:bg-zinc-50 dark:hover:bg-zinc-800`}
+                              onClick={() => setFullscreenSceneNum(sceneNum)}
+                            >
+                              <div className="flex items-center gap-4">
+                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center bg-zinc-900 text-white shadow-lg`}>
+                                  <Layers size={20} />
+                                </div>
+                                <h4 className="text-lg font-black uppercase tracking-tighter">
+                                  SCENE: {sceneNum.padStart(2, '0')}
+                                </h4>
+                              </div>
+                              <span className="text-xs font-black text-zinc-400 uppercase tracking-widest">{sceneShots.length} Shots</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                
+                <div className="flex items-center gap-4 mb-6">
+                  <ShoppingBag className="text-black" size={24} />
+                  <h3 className="text-lg font-black uppercase tracking-tighter">Individual Assets</h3>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {selectedActorRentals.map(rental => {
+                    const item = clothes.find(c => c.id === rental.clothing_id);
+                    return (
+                      <div key={rental.id} className="group bg-white rounded-[3rem] border-2 border-zinc-100 overflow-hidden shadow-sm hover:shadow-2xl transition-all">
+                        <div className="aspect-[4/5] relative cursor-pointer" onClick={() => setFullscreenClothingId(item?.id)}>
+                          {item && <img src={item.image_url} className="w-full h-full object-cover" loading="lazy" decoding="async" />}
+                          <div className="absolute top-6 left-6 flex flex-col gap-2">
+                            <span className={`px-4 py-2 text-[10px] font-black uppercase rounded-full shadow-lg ${styles.inverted}`}>
+                              SHOT: {rental.shot || 'NA'}
+                            </span>
+                            <span className="px-4 py-2 bg-white/90 backdrop-blur-md text-black text-[10px] font-black uppercase rounded-full border border-black/10 shadow-lg">
+                              {rental.status}
+                            </span>
+                          </div>
+                          <div 
+                            className="absolute bottom-6 right-6 p-4 bg-white/90 backdrop-blur-md rounded-2xl shadow-xl hover:scale-110 transition-all opacity-0 group-hover:opacity-100"
+                          >
+                            <Maximize2 size={20} />
+                          </div>
+                        </div>
+                        <div className="p-8">
+                          <h4 className="text-xl font-black uppercase tracking-tighter mb-4">{item?.name || 'Unknown Item'}</h4>
+                          <div className="grid grid-cols-2 gap-4 pt-6 border-t font-bold text-[10px] uppercase tracking-widest text-zinc-400">
+                            <div>
+                              <p className="mb-1">Size</p>
+                              <p className="text-black">{rental.size}</p>
+                            </div>
+                            <div>
+                              <p className="mb-1">Type</p>
+                              <p className="text-black">{item?.type || 'Clothing'}</p>
+                            </div>
+                            <div className="col-span-2">
+                              <p className="mb-1">Allocated On</p>
+                              <p className="text-black">
+                                {rental.rental_date ? (typeof rental.rental_date === 'string' ? rental.rental_date : new Date(rental.rental_date.toDate()).toLocaleDateString()) : 'N/A'}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
             </div>
           </motion.div>
@@ -1364,7 +1390,7 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
               <div className="flex-1 overflow-y-auto">
                 <div className="min-h-full flex flex-col lg:flex-row">
                   <div className="lg:w-1/2 h-[70vh] lg:h-screen sticky top-0 bg-zinc-900 flex items-center justify-center p-8">
-                    <img src={item.image_url} className="max-w-full max-h-full object-contain shadow-[0_50px_100px_-20px_rgba(0,0,0,0.8)]" />
+                    <img src={item.image_url} className="max-w-full max-h-full object-contain shadow-[0_50px_100px_-20px_rgba(0,0,0,0.8)]" loading="lazy" decoding="async" />
                   </div>
                   
                   <div className={`lg:w-1/2 p-12 lg:p-24 flex flex-col justify-center ${styles.inverted}`}>
@@ -1422,6 +1448,129 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
           );
         })()}
       </AnimatePresence>
+
+      {fullscreenSceneNum && createPortal(
+        <div className="fixed inset-0 z-[400] flex flex-col bg-zinc-50 dark:bg-zinc-950 overflow-hidden">
+          <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center bg-zinc-100 dark:bg-zinc-900">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-black uppercase tracking-tighter">Scene {fullscreenSceneNum}</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setFullscreenSceneNum(null)}
+                className={`p-2 rounded-xl transition-all active:scale-95 border border-zinc-200 dark:border-zinc-800 ${styles.secondary}`}
+              >
+                <X size={16} />
+              </button>
+              <button 
+                onClick={() => setFullscreenSceneNum(null)}
+                className={`px-4 py-2 rounded-xl font-black uppercase tracking-widest text-xs transition-all border ${styles.secondary}`}
+              >
+                {t('Back')}
+              </button>
+            </div>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+            <div className={`max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-10`}>
+              {shots
+                .filter(s => String(s.scene_number || 1) === fullscreenSceneNum && (s.actor_id === selectedActor?.id))
+                .sort((a,b) => (a.shot_number || 0) - (b.shot_number || 0))
+                .map(shot => (
+                  <motion.div 
+                    key={shot.id} 
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className={`p-10 rounded-[3rem] border-2 border-zinc-100 bg-white shadow-sm relative transition-all`}
+                  >
+                    <div className="flex items-center justify-between gap-2 mb-10">
+                      <div className="flex items-center gap-4">
+                        <span className={`px-6 py-2 rounded-2xl text-xs font-black uppercase tracking-widest bg-black text-white`}>Shot {shot.shot_number}</span>
+                        <h4 className="text-xl font-black uppercase tracking-tighter text-zinc-900">{shot.name || `Shot ${shot.shot_number}`}</h4>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest italic mr-2">{shot.day || 'Day 1'}</span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteConfirm({
+                              show: true,
+                              title: 'Delete Shot',
+                              message: `Are you sure you want to delete Shot ${shot.shot_number}?`,
+                              onSelect: async () => {
+                                try {
+                                  await deleteDoc(doc(db, "shots", shot.id));
+                                  setDeleteConfirm(null);
+                                } catch (err) {
+                                  console.error("Delete shot error:", err);
+                                }
+                              }
+                            });
+                          }}
+                          className="p-3 rounded-2xl bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  
+                    <div className={`grid gap-4 ${(shot.clothing_item_ids || []).length > 2 ? 'grid-cols-2 lg:grid-cols-3' : 'grid-cols-2'}`}>
+                      {(shot.clothing_item_ids || []).map(itemId => {
+                        const item = (clothes || []).find(c => String(c.id) === String(itemId));
+                        if (!item) return null;
+                        return (
+                          <div key={itemId} className="group relative">
+                            <div className="aspect-[3/4] rounded-3xl overflow-hidden border-2 border-white shadow-md group-hover:shadow-xl transition-all cursor-pointer" onClick={() => setFullscreenClothingId(item.id)}>
+                              <img src={item.image_url} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" loading="lazy" decoding="async" />
+                            </div>
+                            <div className="p-4">
+                              <p className="text-[10px] font-black uppercase tracking-widest opacity-50 mb-1">{item.type || 'Piece'}</p>
+                              <p className="text-sm font-black truncate uppercase tracking-tighter text-zinc-900">{item.name || 'Untitled'}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {(!shot.clothing_item_ids || shot.clothing_item_ids.length === 0) && (
+                      <div className={`py-12 text-center border-2 border-dashed border-zinc-200 rounded-[2.5rem] bg-zinc-50`}>
+                        <p className="text-sm font-black uppercase tracking-widest text-zinc-300">No assets assigned</p>
+                      </div>
+                    )}
+                  </motion.div>
+                ))}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {deleteConfirm && createPortal(
+        <div className="fixed inset-0 z-[500] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md">
+          <motion.div 
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="w-full max-w-md p-10 rounded-[3rem] bg-white border shadow-2xl"
+          >
+            <h3 className="text-2xl font-black tracking-tighter mb-4 text-black">{deleteConfirm.title}</h3>
+            <p className="text-zinc-500 mb-8 font-medium leading-relaxed">{deleteConfirm.message}</p>
+            <div className="flex gap-4">
+              <button 
+                onClick={() => setDeleteConfirm(null)}
+                className="flex-1 py-4 rounded-2xl font-black uppercase tracking-widest text-xs border border-zinc-200 text-zinc-900 hover:bg-zinc-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={deleteConfirm.onSelect}
+                className="flex-1 py-4 rounded-2xl font-black uppercase tracking-widest text-xs bg-red-500 text-white shadow-lg shadow-red-500/20 active:scale-95 transition-all"
+              >
+                Delete
+              </button>
+            </div>
+          </motion.div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

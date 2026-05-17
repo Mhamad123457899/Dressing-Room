@@ -75,6 +75,10 @@ service cloud.firestore {
       return data.company_id is string && data.project_id is string && data.actor_id is string && data.scene_number is number && data.shot_number is number && data.clothing_item_ids is list;
     }
 
+    function isValidScene(data) {
+      return data.company_id is string && data.project_id is string && data.actor_id is string && data.scene_number is number;
+    }
+
     // Rules
     match /admins/{adminId} {
       allow read: if isAuthenticated();
@@ -123,6 +127,11 @@ service cloud.firestore {
     }
 
     match /shots/{shotId} {
+      allow read: if true;
+      allow create, update, delete: if isAuthenticated();
+    }
+
+    match /scenes/{sceneId} {
       allow read: if true;
       allow create, update, delete: if isAuthenticated();
     }

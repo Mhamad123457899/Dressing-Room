@@ -125,6 +125,19 @@
         "created_at": { "type": "string", "format": "date-time" }
       },
       "required": ["company_id", "project_id", "actor_id", "scene_number", "shot_number"]
+    },
+    "Scene": {
+      "title": "Scene",
+      "description": "A specific scene for an actor in a project",
+      "type": "object",
+      "properties": {
+        "company_id": { "type": "string" },
+        "project_id": { "type": "string" },
+        "actor_id": { "type": "string" },
+        "scene_number": { "type": "number" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["company_id", "project_id", "actor_id", "scene_number"]
     }
   },
   "firestore": {
@@ -155,6 +168,10 @@
     "/projects/{projectId}/actors/{actorId}": {
       "schema": "Actor",
       "description": "Actors in a project"
+    },
+    "/projects/{projectId}/actors/{actorId}/scenes/{sceneId}": {
+      "schema": "Scene",
+      "description": "Scenes for an actor"
     },
     "/projects/{projectId}/actors/{actorId}/shots/{shotId}": {
       "schema": "Shot",

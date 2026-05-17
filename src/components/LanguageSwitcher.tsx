@@ -15,9 +15,7 @@ const THEMES: any = {
 const languages = [
   { code: 'en', name: 'English' },
   { code: 'ku', name: 'Kurdish' },
-  { code: 'fr', name: 'French' },
   { code: 'ar', name: 'Arabic' },
-  { code: 'uk', name: 'Ukrainian' },
 ];
 
 export const LanguageSwitcher = () => {
