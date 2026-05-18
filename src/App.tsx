@@ -7,7 +7,6 @@ import {
   Plus, 
   Trash2, 
   Edit2,
-  Settings, 
   LogOut, 
   Calendar, 
   Tag, 
@@ -29,7 +28,15 @@ import {
   History,
   FileText,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Lock,
+  CheckCircle,
+  RefreshCcw,
+  HelpCircle,
+  Zap,
+  Settings,
+  Settings as SettingsIcon,
+  ShieldCheck
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
@@ -395,9 +402,15 @@ const ThemeProvider = ({ children }: { children: ReactNode }) => {
 import { LanguageSwitcher } from './components/LanguageSwitcher';
 import { SuperAdminPanel } from './components/SuperAdminPanel';
 import { SubscriptionModal } from './components/SubscriptionModal';
-const Navbar = ({ isAdmin, onOpenAdmin, t, currentCompany, isViewOnly, onLogout, activeView, setActiveView, setNotification, setShowSubscriptionModal, isSuperAdmin = false }: { 
+import { OnboardingTour } from './components/OnboardingTour';
+import { WhatsNewModal } from './components/WhatsNewModal';
+import { AccountSettingsModal } from './components/AccountSettingsModal';
+
+const APP_VERSION = "2.1.0";
+const Navbar = ({ isAdmin, onOpenAdmin, onOpenProfile, t, currentCompany, isViewOnly, onLogout, activeView, setActiveView, setNotification, setShowSubscriptionModal, isSuperAdmin = false }: { 
   isAdmin: boolean, 
   onOpenAdmin: () => void, 
+  onOpenProfile: () => void,
   t: any, 
   currentCompany: Company | null, 
   isViewOnly: boolean,
@@ -422,19 +435,19 @@ const Navbar = ({ isAdmin, onOpenAdmin, t, currentCompany, isViewOnly, onLogout,
 
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-md border-b px-2 min-[400px]:px-6 py-4 flex justify-between items-center transition-colors duration-300 ${styles.navbar}`}>
-      <div className="flex items-center gap-2 sm:gap-6">
-        <div className="flex items-center gap-2 sm:gap-4">
+      <div className="flex items-center gap-2 sm:gap-10">
+        <div className="flex items-center gap-3 sm:gap-6">
           <Logo size={48} src={currentCompany?.logo_url} />
-          <h1 className={`text-xl font-bold tracking-tight ${styles.text} hidden xl:inline-block`}>
+          <h1 className={`text-xl font-black tracking-tighter uppercase italic ${styles.text} hidden xl:inline-block`}>
             {currentCompany?.name || 'Admin Panel'}
           </h1>
         </div>
         
         {!isSuperAdmin && (
-          <div className={`flex items-center gap-1 p-1 rounded-xl ${styles.secondary}`}>
+          <div className={`flex items-center gap-2 p-1.5 rounded-2xl ${styles.secondary} shadow-inner`}>
             <button 
               onClick={() => setActiveView('closet')}
-              className={`px-3 sm:px-4 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-all flex items-center gap-1 sm:gap-2 ${activeView === 'closet' ? styles.button : 'hover:bg-black/5'}`}
+              className={`px-4 sm:px-6 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeView === 'closet' ? styles.button + " shadow-lg" : 'hover:bg-black/5 opacity-60'}`}
             >
               <History size={14} /> <span className="hidden min-[450px]:inline">{t('Closet')}</span>
             </button>
@@ -446,97 +459,109 @@ const Navbar = ({ isAdmin, onOpenAdmin, t, currentCompany, isViewOnly, onLogout,
                   setShowSubscriptionModal(true);
                 }
               }}
-              className={`px-3 sm:px-4 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-all flex items-center gap-1 sm:gap-2 ${activeView === 'production' ? styles.button : 'hover:bg-black/5'}`}
+              className={`px-4 sm:px-6 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeView === 'production' ? styles.button + " shadow-lg" : 'hover:bg-black/5 opacity-60'}`}
             >
               <Activity size={14} /> <span className="hidden min-[450px]:inline">{t('Production')}</span>
             </button>
           </div>
         )}
       </div>
-      <div className="flex items-center gap-2 sm:gap-4">
-        <div className="relative">
-          <button 
-            onClick={() => {
-              setShowLangMenu(!showLangMenu);
-              setShowThemeMenu(false);
-            }}
-            className={`p-2 rounded-full transition-colors flex items-center gap-2 ${styles.secondary}`}
-            title="Change Language"
-          >
-            <span className="text-xs font-bold uppercase">{i18n.language.split('-')[0]}</span>
-          </button>
-          
-          {showLangMenu && (
-            <div className={`absolute top-full right-0 mt-2 p-2 rounded-xl shadow-xl border min-w-[150px] ${styles.card} z-50`}>
-              <div className="flex flex-col gap-1">
-                {languages.map((lang) => (
-                  <button
-                    key={lang.code}
-                    onClick={() => {
-                      i18n.changeLanguage(lang.code);
-                      setShowLangMenu(false);
-                    }}
-                    className={`px-3 py-2 rounded-lg text-left text-sm font-medium transition-colors flex items-center justify-between ${i18n.language === lang.code ? styles.button : styles.secondary}`}
-                  >
-                    {lang.name}
-                    {i18n.language === lang.code && <Check size={14} />}
-                  </button>
-                ))}
+      <div className="flex items-center gap-4 sm:gap-8">
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <button 
+              onClick={() => {
+                setShowLangMenu(!showLangMenu);
+                setShowThemeMenu(false);
+              }}
+              className={`p-2.5 rounded-xl transition-all flex items-center gap-2 shadow-sm ${styles.secondary} hover:scale-105 active:scale-95`}
+              title="Change Language"
+            >
+              <span className="text-[10px] font-black uppercase tracking-tighter">{i18n.language.split('-')[0]}</span>
+            </button>
+            
+            {showLangMenu && (
+              <div className={`absolute top-full right-0 mt-3 p-2 rounded-2xl shadow-2xl border min-w-[140px] ${styles.card} z-[60] animate-in fade-in slide-in-from-top-2`}>
+                <div className="flex flex-col gap-1">
+                  {languages.map((lang) => (
+                    <button
+                      key={lang.code}
+                      onClick={() => {
+                        i18n.changeLanguage(lang.code);
+                        setShowLangMenu(false);
+                      }}
+                      className={`px-4 py-2.5 rounded-xl text-left text-xs font-black uppercase tracking-widest transition-all flex items-center justify-between ${i18n.language === lang.code ? styles.button : styles.secondary}`}
+                    >
+                      {lang.name}
+                      {i18n.language === lang.code && <Check size={14} />}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
 
-        <div className="relative">
-          <button 
-            onClick={() => {
-              setShowThemeMenu(!showThemeMenu);
-              setShowLangMenu(false);
-            }}
-            className={`p-2 rounded-full transition-colors ${styles.secondary}`}
-            title="Change Theme"
-          >
-            <Palette size={20} />
-          </button>
-          
-          {showThemeMenu && (
-            <div className={`absolute top-full right-0 mt-2 p-2 rounded-xl shadow-xl border min-w-[150px] ${styles.card} z-50`}>
-              <div className="flex flex-col gap-1">
-                {(['light', 'dark', 'comfort', 'rose'] as Theme[]).map((tOption) => (
-                  <button
-                    key={tOption}
-                    onClick={() => {
-                      setTheme(tOption);
-                      setShowThemeMenu(false);
-                    }}
-                    className={`px-3 py-2 rounded-lg text-left text-sm font-medium transition-colors capitalize flex items-center justify-between ${theme === tOption ? styles.button : styles.secondary}`}
-                  >
-                    {tOption === 'comfort' ? 'Eyes Comfort' : tOption}
-                    {theme === tOption && <Check size={14} />}
-                  </button>
-                ))}
+          <div className="relative">
+            <button 
+              onClick={() => {
+                setShowThemeMenu(!showThemeMenu);
+                setShowLangMenu(false);
+              }}
+              className={`p-2.5 rounded-xl transition-all shadow-sm ${styles.secondary} hover:scale-105 active:scale-95`}
+              title="Change Theme"
+            >
+              <Palette size={20} />
+            </button>
+            
+            {showThemeMenu && (
+              <div className={`absolute top-full right-0 mt-3 p-2 rounded-2xl shadow-2xl border min-w-[180px] ${styles.card} z-50 animate-in fade-in slide-in-from-top-2`}>
+                <div className="flex flex-col gap-1">
+                  {(['light', 'dark', 'comfort', 'rose'] as Theme[]).map((tOption) => (
+                    <button
+                      key={tOption}
+                      onClick={() => {
+                        setTheme(tOption);
+                        setShowThemeMenu(false);
+                      }}
+                      className={`px-4 py-2.5 rounded-xl text-left text-xs font-black uppercase tracking-widest transition-all flex items-center justify-between group ${theme === tOption ? styles.button : styles.secondary}`}
+                    >
+                      {tOption === 'comfort' ? 'Eyes Comfort' : tOption}
+                      {theme === tOption ? <Check size={14} /> : <div className="w-2 h-2 rounded-full opacity-0 group-hover:opacity-20 bg-current" />}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {!isViewOnly && !isSuperAdmin && (
-          <button 
-            onClick={onOpenAdmin}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full transition-colors font-medium whitespace-nowrap ${styles.button}`}
-          >
-            <Settings size={18} />
-            <span className="hidden sm:inline">{t('Admin Panel')}</span>
-          </button>
+          <div className="flex items-center gap-3 sm:gap-4">
+            <button 
+              onClick={onOpenProfile}
+              className={`p-2.5 rounded-xl transition-all flex items-center gap-2 shadow-sm ${styles.secondary} hover:scale-105 active:scale-95`}
+              title="Account Settings"
+            >
+              <User size={20} />
+            </button>
+            <button 
+              onClick={onOpenAdmin}
+              className={`flex items-center gap-3 px-5 py-2.5 rounded-xl transition-all font-black uppercase tracking-widest text-xs whitespace-nowrap shadow-lg hover:translate-y-[-1px] active:scale-95 ${styles.button}`}
+            >
+              <SettingsIcon size={18} />
+              <span className="hidden sm:inline">{t('Admin Panel')}</span>
+            </button>
+          </div>
         )}
 
         {currentCompany && !isViewOnly && (
           <button 
             onClick={onLogout}
-            className={`p-2 rounded-full transition-colors ${styles.secondary}`}
+            className={`p-2.5 rounded-xl transition-all shadow-md ${styles.secondary} hover:scale-105 active:scale-95 text-rose-500 border border-rose-100 flex items-center gap-2 px-3`}
             title="Switch Company"
           >
             <LogOut size={20} />
+            <span className="text-[10px] font-black uppercase tracking-widest hidden md:inline">{t('Logout')}</span>
           </button>
         )}
       </div>
@@ -2235,7 +2260,8 @@ const AdminPanel = ({
   setAddToCollectionModal, seedSampleData, isSubmitting, 
   currentCompany, isViewOnly,
   projects, actors, shots, scenes,
-  setShowSubscriptionModal
+  setShowSubscriptionModal,
+  setShowAccountSettings
 }: { 
   onClose: () => void, 
   rentals: Rental[], 
@@ -2255,9 +2281,11 @@ const AdminPanel = ({
   actors: Actor[],
   shots: Shot[],
   scenes: Scene[],
-  setShowSubscriptionModal: (show: boolean) => void
+  setShowSubscriptionModal: (show: boolean) => void,
+  setShowAccountSettings: (show: boolean) => void
 }) => {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = THEMES[theme];
   const [activeTab, setActiveTab] = useState<"clothes" | "collections" | "rentals" | "clients" | "production" | "settings">("clothes");                
 
@@ -2268,6 +2296,14 @@ const AdminPanel = ({
   }, [currentCompany?.is_paid, activeTab]);
 
   const [companyLogoUrl, setCompanyLogoUrl] = useState(currentCompany?.logo_url || "");
+  const [companyName, setCompanyName] = useState(currentCompany?.name || "");
+  const [profileVerifyPassword, setProfileVerifyPassword] = useState("");
+  const [showProfileVerify, setShowProfileVerify] = useState(false);
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+
   const [rentalFilter, setRentalFilter] = useState<"active" | "all">("active");
   const [rentalSearch, setRentalSearch] = useState("");
   const [clientSearch, setClientSearch] = useState("");
@@ -2846,59 +2882,210 @@ const AdminPanel = ({
             </div>
           </div>
         ) : activeTab === "settings" ? (
-          <div className="max-w-2xl mx-auto">
-            <div className={`p-10 rounded-[3rem] border shadow-2xl ${styles.card}`}>
-              <div className="flex items-center gap-4 mb-10">
-                <div className={`p-4 rounded-3xl ${styles.secondary}`}>
-                  <Settings size={32} />
+          <div className="max-w-3xl mx-auto pb-12">
+            <div className={`p-8 md:p-12 rounded-[3.5rem] border shadow-2xl ${styles.card}`}>
+              <div className="flex items-center gap-5 mb-12">
+                <div className={`p-5 rounded-3xl ${styles.secondary} shadow-inner`}>
+                  <SettingsIcon size={32} className="text-zinc-900" />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-black tracking-tight">Closet Settings</h3>
-                  <p className={styles.muted}>Manage your company profile and preferences.</p>
+                  <h3 className="text-3xl font-black tracking-tighter uppercase italic">Control Center</h3>
+                  <p className={`${styles.muted} font-medium`}>Manage your identities and security protocols.</p>
                 </div>
               </div>
 
-              <div className="space-y-8">
-                <div>
-                  <label className={`block text-[10px] font-bold uppercase tracking-widest mb-3 ${styles.muted}`}>Company Logo URL</label>
-                  <div className="flex flex-col gap-6">
-                    <input 
-                      type="url"
-                      value={companyLogoUrl}
-                      onChange={(e) => setCompanyLogoUrl(e.target.value)}
-                      className={`w-full px-6 py-4 rounded-2xl outline-none border focus:ring-2 focus:ring-black transition-all ${styles.input}`}
-                      placeholder="https://example.com/logo.png"
-                    />
-                    
-                    {companyLogoUrl && (
-                      <div className="flex flex-col items-center gap-4 p-8 rounded-[2rem] border-2 border-dashed border-zinc-200">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Logo Preview</p>
-                        <div className={`w-32 h-32 rounded-3xl overflow-hidden border shadow-lg ${styles.secondary}`}>
-                          <img src={companyLogoUrl} alt="Preview" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
-                        </div>
-                      </div>
-                    )}
+              <div className="space-y-12">
+                {/* Profile Information */}
+                <section className="space-y-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <User size={18} className="text-indigo-500" />
+                    <h4 className={`text-xs font-black uppercase tracking-[0.2em] ${styles.muted}`}>{t('Account Identity')}</h4>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className={`block text-[10px] font-bold uppercase tracking-widest ml-1 ${styles.muted}`}>{t('Display Name')}</label>
+                      <input 
+                        type="text"
+                        value={companyName}
+                        onChange={(e) => setCompanyName(e.target.value)}
+                        className={`w-full px-6 py-4 rounded-2xl outline-none border focus:ring-2 transition-all font-medium ${styles.input}`}
+                        placeholder="Şan Closet"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className={`block text-[10px] font-bold uppercase tracking-widest ml-1 ${styles.muted}`}>{t('Logo Image URL')}</label>
+                      <input 
+                        type="url"
+                        value={companyLogoUrl}
+                        onChange={(e) => setCompanyLogoUrl(e.target.value)}
+                        className={`w-full px-6 py-4 rounded-2xl outline-none border focus:ring-2 transition-all font-medium ${styles.input}`}
+                        placeholder="https://example.com/logo.png"
+                      />
+                    </div>
+                  </div>
 
+                  {companyLogoUrl && (
+                    <div className={`flex items-center gap-6 p-6 rounded-3xl border ${styles.secondary} border-dashed`}>
+                      <div className={`w-20 h-20 rounded-2xl overflow-hidden border flex items-center justify-center shrink-0 ${styles.card}`}>
+                        <img src={companyLogoUrl} alt="Preview" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                      </div>
+                      <div className="space-y-1">
+                        <p className={`text-[10px] font-black uppercase tracking-widest ${styles.muted}`}>{t('Logo Live Preview')}</p>
+                        <p className={`text-xs font-medium italic ${styles.accent}`}>{t('This is how your brand will appear to visitors.')}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  <AnimatePresence>
+                    {showProfileVerify && (
+                      <motion.div 
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="space-y-2 p-6 rounded-3xl border-2 border-rose-500/20 bg-rose-500/5"
+                      >
+                        <label className={`block text-[10px] font-bold uppercase tracking-widest ml-1 text-rose-500`}>{t('Confirm Identity (Enter Password)')}</label>
+                        <input 
+                          type="password"
+                          value={profileVerifyPassword}
+                          onChange={(e) => setProfileVerifyPassword(e.target.value)}
+                          className={`w-full px-6 py-4 rounded-2xl outline-none border border-rose-200 focus:ring-2 focus:ring-rose-500 transition-all font-medium ${styles.input}`}
+                          placeholder={t('Enter current password to save')}
+                          autoFocus
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <button 
+                    onClick={async () => {
+                      if (!currentCompany?.id) return;
+                      
+                      if (!showProfileVerify) {
+                        setShowProfileVerify(true);
+                        return;
+                      }
+
+                      if (profileVerifyPassword !== currentCompany.password) {
+                        setNotification({ message: t("Incorrect security password."), type: "error" });
+                        return;
+                      }
+
+                      try {
+                        await updateDoc(doc(db, "companies", currentCompany.id), {
+                          name: companyName,
+                          logo_url: companyLogoUrl
+                        });
+                        setNotification({ message: t("Profile updated successfully!"), type: "success" });
+                        setShowProfileVerify(false);
+                        setProfileVerifyPassword("");
+                      } catch (err: any) {
+                        setNotification({ message: t(`Failed to update profile: ${err.message}`), type: "error" });
+                      }
+                    }}
+                    className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest transition-all shadow-lg hover:translate-y-[-2px] active:scale-95 flex items-center justify-center gap-3 ${styles.button}`}
+                  >
+                    {showProfileVerify ? <ShieldCheck size={18} /> : <CheckCircle size={18} />}
+                    {showProfileVerify ? t('Verify & Save') : t('Save Changes')}
+                  </button>
+                </section>
+
+                <div className={`h-px w-full ${styles.border}`} />
+
+                {/* Password Management */}
+                <section className="space-y-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Lock size={18} className="text-rose-500" />
+                    <h4 className={`text-xs font-black uppercase tracking-[0.2em] ${styles.muted}`}>{t('Security Credentials')}</h4>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className={`block text-[10px] font-bold uppercase tracking-widest ml-1 ${styles.muted}`}>{t('Current Password')}</label>
+                      <input 
+                        type="password"
+                        value={oldPassword}
+                        onChange={(e) => setOldPassword(e.target.value)}
+                        className={`w-full px-6 py-4 rounded-2xl outline-none border focus:ring-2 transition-all font-medium ${styles.input} focus:ring-rose-500`}
+                        placeholder={t('Confirm identity with old password')}
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className={`block text-[10px] font-bold uppercase tracking-widest ml-1 ${styles.muted}`}>{t('New Password')}</label>
+                        <input 
+                          type="password"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          className={`w-full px-6 py-4 rounded-2xl outline-none border focus:ring-2 transition-all font-medium ${styles.input} focus:ring-rose-500`}
+                          placeholder={t('New secure password')}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className={`block text-[10px] font-bold uppercase tracking-widest ml-1 ${styles.muted}`}>{t('Repeat New Password')}</label>
+                        <input 
+                          type="password"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          className={`w-full px-6 py-4 rounded-2xl outline-none border focus:ring-2 transition-all font-medium ${styles.input} focus:ring-rose-500`}
+                          placeholder={t('Verify new password')}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-4">
                     <button 
                       onClick={async () => {
                         if (!currentCompany?.id) return;
-                        // Use local isSubmitting logic if needed, but here we can just use the prop or a local state if I add one
+                        if (!oldPassword || !newPassword || !confirmPassword) {
+                          setNotification({ message: t("Please fill all password fields"), type: "error" });
+                          return;
+                        }
+                        if (newPassword !== confirmPassword) {
+                          setNotification({ message: t("New passwords do not match"), type: "error" });
+                          return;
+                        }
+                        if (oldPassword !== currentCompany.password) {
+                          setNotification({ message: t("Current password is incorrect"), type: "error" });
+                          return;
+                        }
+
+                        setIsUpdatingPassword(true);
                         try {
                           await updateDoc(doc(db, "companies", currentCompany.id), {
-                            logo_url: companyLogoUrl
+                            password: newPassword
                           });
-                          setNotification({ message: "Logo updated successfully!", type: "success" });
+                          setOldPassword("");
+                          setNewPassword("");
+                          setConfirmPassword("");
+                          setNotification({ message: t("Password updated safely!"), type: "success" });
                         } catch (err: any) {
-                          console.error("Failed to update logo:", err);
-                          setNotification({ message: `Failed to update logo: ${err.message || 'Permission denied'}`, type: "error" });
+                          setNotification({ message: t(`Failed to update password: ${err.message}`), type: "error" });
+                        } finally {
+                          setIsUpdatingPassword(false);
                         }
                       }}
-                      className={`w-full py-5 rounded-2xl font-black uppercase tracking-widest transition-all shadow-xl active:scale-95 ${styles.button}`}
+                      disabled={isUpdatingPassword}
+                      className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest transition-all shadow-rose-200 shadow-xl hover:translate-y-[-2px] active:scale-95 flex items-center justify-center gap-3 bg-rose-600 text-white hover:bg-rose-700 ${isUpdatingPassword ? 'opacity-50 grayscale' : ''}`}
                     >
-                      Update Logo
+                      {isUpdatingPassword ? <RefreshCcw className="animate-spin" size={18} /> : <Zap size={18} fill="currentColor" />}
+                      {t('Finalize Password Change')}
+                    </button>
+
+                    <button 
+                      onClick={() => {
+                        onClose(); // Close Admin Panel
+                        setShowAccountSettings(true); // Open chatbot
+                      }}
+                      className={`text-[11px] font-black uppercase tracking-[0.2em] transition-colors py-4 flex items-center justify-center gap-2 ${styles.muted} hover:text-indigo-600`}
+                    >
+                      <HelpCircle size={14} />
+                      {t('Are you forget your password? Use AI Assistant')}
                     </button>
                   </div>
-                </div>
+                </section>
               </div>
             </div>
           </div>
@@ -4221,6 +4408,9 @@ function App() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [showTour, setShowTour] = useState(false);
+  const [showWhatsNew, setShowWhatsNew] = useState(false);
+  const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error' | 'info'} | null>(null);
   const [activeFooterModal, setActiveFooterModal] = useState<'privacy' | 'terms' | 'support' | 'about' | null>(null);
 
@@ -4290,6 +4480,35 @@ function App() {
   };
 
   const [confirmModal, setConfirmModal] = useState<{show: boolean, title: string, message: string, onConfirm: () => void} | null>(null);
+
+  useEffect(() => {
+    const hasSeenTour = localStorage.getItem('hasSeenTour');
+    if (!hasSeenTour && !isCompanyLoading && currentCompany) {
+      setShowTour(true);
+    }
+  }, [isCompanyLoading, currentCompany]);
+
+  const handleCloseTour = () => {
+    localStorage.setItem('hasSeenTour', 'true');
+    setShowTour(false);
+    
+    // Check if we should also show WhatsNew after the tour (optional, but let's just set version here)
+    localStorage.setItem('lastSeenVersion', APP_VERSION);
+  };
+
+  useEffect(() => {
+    const lastSeenVersion = localStorage.getItem('lastSeenVersion');
+    const hasSeenTour = localStorage.getItem('hasSeenTour');
+    
+    if (hasSeenTour && lastSeenVersion !== APP_VERSION && !isCompanyLoading && currentCompany) {
+      setShowWhatsNew(true);
+    }
+  }, [isCompanyLoading, currentCompany]);
+
+  const handleCloseWhatsNew = () => {
+    localStorage.setItem('lastSeenVersion', APP_VERSION);
+    setShowWhatsNew(false);
+  };
 
   useEffect(() => {
     if (notification) {
@@ -4563,6 +4782,7 @@ function App() {
           isViewOnly={false}
           onLogout={handleLogout}
           onOpenAdmin={() => {}}
+          onOpenProfile={() => setShowAccountSettings(true)}
           t={t}
           activeView={activeView}
           setActiveView={setActiveView}
@@ -4615,6 +4835,7 @@ function App() {
           setIsAdmin(false);
           setShowLogin(true);
         }}
+        onOpenProfile={() => setShowAccountSettings(true)}
         t={t}
         activeView={activeView}
         setActiveView={setActiveView}
@@ -5286,6 +5507,7 @@ function App() {
             currentCompany={currentCompany}
             isViewOnly={isViewOnly}
             setShowSubscriptionModal={setShowSubscriptionModal}
+            setShowAccountSettings={setShowAccountSettings}
           />
         )}
       </AnimatePresence>
@@ -5394,6 +5616,31 @@ function App() {
         phone="+964 750 493 5433"
         facebookUrl="https://www.facebook.com/share/1DzUvN43q6/"
       />
+
+      <OnboardingTour 
+        isOpen={showTour}
+        onClose={handleCloseTour}
+      />
+
+      <WhatsNewModal 
+        isOpen={showWhatsNew}
+        onClose={handleCloseWhatsNew}
+        version={APP_VERSION}
+      />
+
+      {currentCompany && (
+        <AccountSettingsModal 
+          isOpen={showAccountSettings}
+          onClose={() => setShowAccountSettings(false)}
+          currentCompany={currentCompany}
+          styles={styles}
+          onUpdateCompany={(newCompany) => {
+            setCurrentCompany(newCompany);
+            // Optionally refresh session state
+          }}
+          setNotification={setNotification}
+        />
+      )}
     </div>
   );
 }

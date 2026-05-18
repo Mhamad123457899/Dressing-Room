@@ -33,10 +33,10 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative w-full max-w-lg bg-white rounded-[2.5rem] shadow-2xl overflow-hidden"
+            className="relative w-full max-w-lg bg-white rounded-[2.5rem] shadow-2xl overflow-y-auto max-h-[90vh] custom-scrollbar"
           >
             {/* Header / Banner */}
-            <div className="relative h-48 overflow-hidden">
+            <div className="relative h-40 sm:h-48 overflow-hidden shrink-0">
               <img 
                 src="/src/assets/images/premium_subscription_banner_1779103405747.png" 
                 alt="Premium Banner"
@@ -47,21 +47,21 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
               
               <button 
                 onClick={onClose}
-                className="absolute top-6 right-6 w-10 h-10 rounded-full bg-black/20 hover:bg-black/40 backdrop-blur-md flex items-center justify-center text-white transition-all hover:scale-110 active:scale-95 z-10"
+                className="absolute top-4 sm:top-6 right-4 sm:right-6 w-10 h-10 rounded-full bg-black/20 hover:bg-black/40 backdrop-blur-md flex items-center justify-center text-white transition-all hover:scale-110 active:scale-95 z-10"
                 id="close-subscription-modal"
               >
                 <X size={20} />
               </button>
               
-              <div className="absolute bottom-6 left-8 text-white">
-                <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-3">
-                  <Crown className="text-yellow-400" size={20} fill="currentColor" />
+              <div className="absolute bottom-4 sm:bottom-6 left-6 sm:left-8 text-white">
+                <div className="w-8 h-8 sm:w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-2 sm:mb-3">
+                  <Crown className="text-yellow-400" size={18} fill="currentColor" />
                 </div>
-                <h2 className="text-xl font-black uppercase tracking-tight">Premium Production Suite</h2>
+                <h2 className="text-lg sm:text-xl font-black uppercase tracking-tight">Premium Production Suite</h2>
               </div>
             </div>
 
-            <div className="p-8 space-y-6">
+            <div className="p-6 sm:p-8 space-y-5 sm:space-y-6">
               <div>
                 <p className="text-zinc-600 font-medium leading-relaxed">
                   Elevate your project management with our <span className="font-bold text-black uppercase tracking-wider text-sm italic">Production Panel</span>. Designed for professionals who demand excellence.
