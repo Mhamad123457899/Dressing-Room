@@ -327,7 +327,12 @@ const THEMES = {
     input: "bg-white border-zinc-200 focus:border-black text-zinc-900 placeholder:text-zinc-400",
     modal: "bg-white text-zinc-900",
     badge: "bg-black text-white",
-    inverted: "bg-black text-white"
+    inverted: "bg-black text-white",
+    premium: "from-amber-400 to-orange-500",
+    premiumBtn: "text-orange-600",
+    tourPing: "bg-blue-500",
+    accentText: "text-blue-600",
+    accentBg: "bg-blue-600"
   },
   dark: {
     bg: "bg-zinc-950",
@@ -342,7 +347,12 @@ const THEMES = {
     input: "bg-zinc-900 border-zinc-800 focus:border-white text-zinc-100 placeholder:text-zinc-500",
     modal: "bg-zinc-900 text-zinc-100",
     badge: "bg-white text-black",
-    inverted: "bg-white text-black"
+    inverted: "bg-white text-black",
+    premium: "from-amber-600 to-orange-700",
+    premiumBtn: "text-orange-700",
+    tourPing: "bg-blue-400",
+    accentText: "text-blue-400",
+    accentBg: "bg-blue-400"
   },
   comfort: {
     bg: "bg-[#fdf6e3]",
@@ -357,7 +367,12 @@ const THEMES = {
     input: "bg-[#eee8d5] border-[#d3cbb7] focus:border-[#b58900] text-[#586e75] placeholder:text-[#93a1a1]",
     modal: "bg-[#fdf6e3] text-[#586e75]",
     badge: "bg-[#b58900] text-white",
-    inverted: "bg-[#b58900] text-white"
+    inverted: "bg-[#b58900] text-white",
+    premium: "from-[#b58900] to-[#cb4b16]",
+    premiumBtn: "text-[#cb4b16]",
+    tourPing: "bg-[#b58900]",
+    accentText: "text-[#b58900]",
+    accentBg: "bg-[#b58900]"
   },
   rose: {
     bg: "bg-[#fff1f2]",
@@ -372,7 +387,12 @@ const THEMES = {
     input: "bg-white border-[#fecdd3] focus:border-[#e11d48] text-[#9f1239] placeholder:text-[#fda4af]",
     modal: "bg-[#fff1f2] text-[#9f1239]",
     badge: "bg-[#e11d48] text-white",
-    inverted: "bg-[#e11d48] text-white"
+    inverted: "bg-[#e11d48] text-white",
+    premium: "from-rose-500 to-pink-600",
+    premiumBtn: "text-rose-600",
+    tourPing: "bg-rose-500",
+    accentText: "text-rose-600",
+    accentBg: "bg-rose-600"
   }
 };
 
@@ -549,10 +569,10 @@ const Navbar = ({ isAdmin, onOpenAdmin, onOpenProfile, onStartTour, t, currentCo
             >
               <HelpCircle size={14} />
               {!localStorage.getItem('hasSeenTour') && (
-                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-blue-500 rounded-full animate-ping pointer-events-none" />
+                <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 ${styles.tourPing} rounded-full animate-ping pointer-events-none`} />
               )}
               {!localStorage.getItem('hasSeenTour') && (
-                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-blue-500 rounded-full pointer-events-none" />
+                <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 ${styles.tourPing} rounded-full pointer-events-none`} />
               )}
             </button>
           </div>
@@ -758,7 +778,7 @@ const ClothingCard = ({ item, onAddToCollection, onRent, isRented, activeRentals
 const Paywall = ({ styles }: { styles: any }) => (
   <div className={`p-10 rounded-[3rem] border shadow-2xl ${styles.card} flex flex-col items-center justify-center text-center`}>
     <div className={`p-6 rounded-full ${styles.secondary} mb-8`}>
-      <Cloud size={48} className="text-blue-500" />
+      <Cloud size={48} className={styles.accentText} />
     </div>
     <h2 className={`text-4xl font-black mb-6 ${styles.text}`}>Premium Production Server</h2>
     <p className={`text-xl max-w-lg mb-10 ${styles.muted}`}>
@@ -1369,7 +1389,7 @@ const ProductionBoard = ({
               <div className="flex px-4 sm:px-8 py-3 sm:py-4 rounded-2xl sm:rounded-3xl border shadow-sm items-center gap-3 sm:gap-4 flex-1 xl:flex-none justify-center">
                 <div className="text-right">
                   <p className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest opacity-50">{t('Picked')}</p>
-                  <p className="text-lg sm:text-xl font-black text-blue-500">{selectedShotClothingIds.length}</p>
+                  <p className={`text-lg sm:text-xl font-black ${styles.accentText}`}>{selectedShotClothingIds.length}</p>
                 </div>
                 <div className="h-8 sm:h-10 w-px bg-zinc-200" />
                 <div className="text-right">
@@ -1503,7 +1523,7 @@ const ProductionBoard = ({
             <div className="lg:col-span-1">
               <div className={`p-8 rounded-[2.5rem] border sticky top-24 ${styles.card}`}>
                 <div className={`w-20 h-20 rounded-3xl flex items-center justify-center mb-6 ${styles.secondary}`}>
-                  <User size={40} className="text-blue-500" />
+                  <User size={40} className={styles.accentText} />
                 </div>
                 <h2 className="text-3xl font-black tracking-tighter mb-6">{selectedActor.name}</h2>
                 
@@ -1840,7 +1860,7 @@ const ProductionBoard = ({
                 <h3 className="text-2xl font-black tracking-tight mb-2 truncate">{actor.name}</h3>
                 <p className={`text-[10px] font-black uppercase tracking-widest opacity-50`}>{shots.filter(s => s.actor_id === actor.id).length} Costumes Shots</p>
                 
-                <div className="mt-8 flex items-center justify-between pt-6 border-t font-black uppercase tracking-widest text-[10px] text-blue-500 group-hover:gap-3 transition-all">
+                <div className={`mt-8 flex items-center justify-between pt-6 border-t font-black uppercase tracking-widest text-[10px] ${styles.accentText} group-hover:gap-3 transition-all`}>
                   Open Profile <ChevronRight size={14} />
                 </div>
               </motion.div>
@@ -4875,7 +4895,7 @@ function App() {
           <motion.div 
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`mb-12 p-6 rounded-[2.5rem] bg-gradient-to-r from-amber-500 to-orange-600 text-white flex flex-col sm:flex-row items-center justify-between gap-6 shadow-2xl relative overflow-hidden group`}
+            className={`mb-12 p-6 rounded-[2.5rem] bg-gradient-to-r ${styles.premium} text-white flex flex-col sm:flex-row items-center justify-between gap-6 shadow-2xl relative overflow-hidden group`}
           >
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 blur-3xl -mr-32 -mt-32 group-hover:scale-110 transition-transform duration-1000" />
             <div className="flex items-center gap-5 relative z-10">
@@ -4889,7 +4909,7 @@ function App() {
             </div>
             <button 
               onClick={() => setShowSubscriptionModal(true)}
-              className="px-10 py-4 rounded-2xl bg-white text-orange-600 text-[10px] font-black uppercase tracking-[0.2em] hover:scale-105 transition-all shadow-xl active:scale-95 relative z-10"
+              className={`px-10 py-4 rounded-2xl bg-white ${styles.premiumBtn} text-[10px] font-black uppercase tracking-[0.2em] hover:scale-105 transition-all shadow-xl active:scale-95 relative z-10`}
             >
               Access Premium
             </button>
@@ -4976,7 +4996,7 @@ function App() {
                 >
                   <div className="flex justify-between items-start mb-6">
                     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${styles.secondary}`}>
-                      <Calendar className="text-zinc-900" size={24} />
+                      <Calendar className={styles.text} size={24} />
                     </div>
                     <button 
                       onClick={(e) => {
@@ -5616,7 +5636,7 @@ function App() {
                   <>
                     <div className="p-6 rounded-2xl border bg-black/5 dark:bg-white/5 space-y-4">
                       <div className="flex items-center gap-4 mb-6">
-                        <div className="w-16 h-16 rounded-full bg-blue-600 flex items-center justify-center text-white text-2xl font-black shadow-lg">
+                        <div className={`w-16 h-16 rounded-full ${styles.accentBg} flex items-center justify-center text-white text-2xl font-black shadow-lg`}>
                           ML
                         </div>
                         <div>
@@ -5628,7 +5648,7 @@ function App() {
                       <div className="space-y-2 font-medium">
                         <p><span className="opacity-50">Owner of:</span> Şan Closet Studio</p>
                         <p><span className="opacity-50">Creation Date:</span> 16/01/2026</p>
-                        <p><span className="opacity-50">Facebook:</span> <a href="https://www.facebook.com/share/1YsTVZ6VHV/" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-600 underline">Miran Luqman Facebook</a></p>
+                        <p><span className="opacity-50">Facebook:</span> <a href="https://www.facebook.com/share/1YsTVZ6VHV/" target="_blank" rel="noopener noreferrer" className={`${styles.accentText} hover:opacity-80 underline`}>Miran Luqman Facebook</a></p>
                       </div>
 
                       <div className="mt-6 pt-6 border-t opacity-80 italic">
@@ -5668,6 +5688,7 @@ function App() {
         name="Miran Luqman"
         phone="+964 750 493 5433"
         facebookUrl="https://www.facebook.com/share/1DzUvN43q6/"
+        styles={styles}
       />
 
       <OnboardingTour 
@@ -5680,6 +5701,7 @@ function App() {
         onClose={handleCloseWhatsNew}
         version={APP_VERSION}
         onStartTour={() => setShowTour(true)}
+        styles={styles}
       />
 
       {currentCompany && (

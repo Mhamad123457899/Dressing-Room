@@ -10,6 +10,7 @@ interface SubscriptionModalProps {
   name: string;
   phone: string;
   facebookUrl: string;
+  styles?: any;
 }
 
 export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
@@ -17,7 +18,8 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
   onClose,
   name,
   phone,
-  facebookUrl
+  facebookUrl,
+  styles
 }) => {
   return (
     <AnimatePresence>
@@ -35,7 +37,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative w-full max-w-lg bg-white rounded-[2.5rem] shadow-2xl overflow-y-auto max-h-[90vh] custom-scrollbar"
+            className={`relative w-full max-w-lg ${styles?.modal || 'bg-white'} rounded-[2.5rem] shadow-2xl overflow-y-auto max-h-[90vh] custom-scrollbar`}
           >
             {/* Header / Banner */}
             <div className="relative h-40 sm:h-48 overflow-hidden shrink-0">
@@ -65,47 +67,48 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 
             <div className="p-6 sm:p-8 space-y-5 sm:space-y-6">
               <div>
-                <p className="text-zinc-600 font-medium leading-relaxed">
-                  Elevate your project management with our <span className="font-bold text-black uppercase tracking-wider text-sm italic">Production Panel</span>. Designed for professionals who demand excellence.
+                <p className={`${styles?.muted || 'text-zinc-600'} font-medium leading-relaxed`}>
+                  Elevate your project management with our <span className={`font-bold ${styles?.text || 'text-black'} uppercase tracking-wider text-sm italic`}>Production Panel</span>. Designed for professionals who demand excellence.
                 </p>
-                <div className="mt-5 p-5 rounded-[2rem] bg-indigo-50/50 border border-indigo-100 flex items-start gap-4 shadow-sm">
-                  <div className="mt-1 w-2 h-2 rounded-full bg-indigo-500 animate-pulse shrink-0" />
-                  <p className="text-indigo-800 text-xs font-bold leading-relaxed">
+                <div className={`mt-5 p-5 rounded-[2rem] bg-gradient-to-br from-indigo-50/50 to-purple-50/50 border ${styles?.accentBg ? 'border-transparent' : 'border-indigo-100'} flex items-start gap-4 shadow-sm backdrop-blur-sm relative overflow-hidden group`}>
+                  <div className={`absolute inset-0 ${styles?.accentBg || 'bg-indigo-500'} opacity-5`} />
+                  <div className={`mt-1 w-2 h-2 rounded-full ${styles?.accentBg || 'bg-indigo-500'} animate-pulse shrink-0`} />
+                  <p className={`${styles?.accentText || 'text-indigo-800'} text-xs font-bold leading-relaxed relative z-10`}>
                     This advanced module is part of our Premium tier. Upgrade your account today for full access to projects, actors, and scheduling tools.
                   </p>
                 </div>
               </div>
 
               <div className="space-y-4">
-                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400">Get Unlocked Instantly</h3>
+                <h3 className={`text-[10px] font-black uppercase tracking-[0.3em] ${styles?.muted || 'text-zinc-400'}`}>Get Unlocked Instantly</h3>
                 
                 <div className="space-y-3">
                   {/* Name Card */}
-                  <div className="flex items-center gap-4 p-4 rounded-2xl bg-zinc-50 border border-zinc-100 group transition-all hover:bg-white hover:border-indigo-200">
-                    <div className="w-10 h-10 rounded-xl bg-white border border-zinc-100 flex items-center justify-center text-zinc-400 group-hover:text-indigo-600 group-hover:border-indigo-100">
+                  <div className={`flex items-center gap-4 p-4 rounded-2xl ${styles?.secondary || 'bg-zinc-50 border-zinc-100'} border group transition-all`}>
+                    <div className={`w-10 h-10 rounded-xl ${styles?.card || 'bg-white border-zinc-100'} border flex items-center justify-center ${styles?.muted || 'text-zinc-400'} group-hover:${styles?.accentText || 'text-indigo-600'} transition-colors`}>
                       <User size={18} />
                     </div>
                     <div>
-                      <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Developer</p>
-                      <p className="text-sm font-bold text-black">{name}</p>
+                      <p className={`text-[9px] font-black uppercase tracking-widest ${styles?.muted || 'text-zinc-400'}`}>Developer</p>
+                      <p className={`text-sm font-bold ${styles?.text || 'text-black'}`}>{name}</p>
                     </div>
                   </div>
 
                   {/* Phone Card */}
                   <a 
                     href={`tel:${phone}`}
-                    className="flex items-center justify-between p-4 rounded-2xl bg-zinc-50 border border-zinc-100 group transition-all hover:bg-white hover:border-indigo-200"
+                    className={`flex items-center justify-between p-4 rounded-2xl ${styles?.secondary || 'bg-zinc-50 border-zinc-100'} border group transition-all`}
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-white border border-zinc-100 flex items-center justify-center text-zinc-400 group-hover:text-green-600 group-hover:border-green-100">
+                      <div className={`w-10 h-10 rounded-xl ${styles?.card || 'bg-white border-zinc-100'} border flex items-center justify-center ${styles?.muted || 'text-zinc-400'} group-hover:text-emerald-500 transition-colors`}>
                         <Phone size={18} />
                       </div>
                       <div>
-                        <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Phone & WhatsApp</p>
-                        <p className="text-sm font-bold text-black">{phone}</p>
+                        <p className={`text-[9px] font-black uppercase tracking-widest ${styles?.muted || 'text-zinc-400'}`}>Phone & WhatsApp</p>
+                        <p className={`text-sm font-bold ${styles?.text || 'text-black'}`}>{phone}</p>
                       </div>
                     </div>
-                    <ExternalLink size={14} className="text-zinc-300 transition-colors group-hover:text-zinc-400" />
+                    <ExternalLink size={14} className={`${styles?.muted || 'text-zinc-300'} transition-colors group-hover:text-zinc-400`} />
                   </a>
 
                   {/* Facebook Card */}
@@ -113,25 +116,25 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                     href={facebookUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-between p-4 rounded-2xl bg-zinc-50 border border-zinc-100 group transition-all hover:bg-white hover:border-indigo-200"
+                    className={`flex items-center justify-between p-4 rounded-2xl ${styles?.secondary || 'bg-zinc-50 border-zinc-100'} border group transition-all`}
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-white border border-zinc-100 flex items-center justify-center text-zinc-400 group-hover:text-blue-600 group-hover:border-blue-100">
+                      <div className={`w-10 h-10 rounded-xl ${styles?.card || 'bg-white border-zinc-100'} border flex items-center justify-center ${styles?.muted || 'text-zinc-400'} group-hover:${styles?.accentText || 'text-blue-600'} transition-colors`}>
                         <Facebook size={18} />
                       </div>
                       <div>
-                        <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Facebook Profile</p>
-                        <p className="text-sm font-bold text-black">Visit Profile</p>
+                        <p className={`text-[9px] font-black uppercase tracking-widest ${styles?.muted || 'text-zinc-400'}`}>Facebook Profile</p>
+                        <p className={`text-sm font-bold ${styles?.text || 'text-black'}`}>Visit Profile</p>
                       </div>
                     </div>
-                    <ExternalLink size={14} className="text-zinc-300 transition-colors group-hover:text-zinc-400" />
+                    <ExternalLink size={14} className={`${styles?.muted || 'text-zinc-300'} transition-colors group-hover:text-zinc-400`} />
                   </a>
                 </div>
               </div>
 
               <button 
                 onClick={onClose}
-                className="w-full py-4 rounded-2xl bg-zinc-900 text-white text-xs font-black uppercase tracking-[0.2em] hover:bg-black transition-all shadow-lg active:scale-[0.98]"
+                className={`w-full py-4 rounded-2xl ${styles?.button || 'bg-zinc-900 text-white'} text-xs font-black uppercase tracking-[0.2em] transition-all shadow-lg active:scale-[0.98]`}
               >
                 Got it
               </button>

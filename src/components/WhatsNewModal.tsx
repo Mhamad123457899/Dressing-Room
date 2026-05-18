@@ -47,9 +47,10 @@ interface WhatsNewModalProps {
   onClose: () => void;
   version: string;
   onStartTour?: () => void;
+  styles?: any;
 }
 
-export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ isOpen, onClose, version, onStartTour }) => {
+export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ isOpen, onClose, version, onStartTour, styles }) => {
   if (!isOpen) return null;
 
   return (
@@ -69,20 +70,20 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ isOpen, onClose, v
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative w-full max-w-xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+          className={`relative w-full max-w-xl ${styles?.modal || 'bg-white'} rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[85vh]`}
         >
           {/* Header */}
-          <div className="bg-zinc-950 p-8 text-white relative flex justify-between items-end shrink-0">
+          <div className={`${styles?.inverted || 'bg-zinc-950 text-white'} p-8 relative flex justify-between items-end shrink-0`}>
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <span className="px-3 py-1 rounded-full bg-white/10 text-[10px] font-black uppercase tracking-widest border border-white/10">
                   Release {version}
                 </span>
-                <span className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-[10px] font-black uppercase tracking-tighter border border-indigo-500/20">
+                <span className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-white/20 text-white text-[10px] font-black uppercase tracking-tighter border border-white/10">
                   <Zap size={10} className="fill-current" /> New Features
                 </span>
               </div>
-              <h2 className="text-4xl font-black tracking-tighter uppercase italic">What's <span className="text-zinc-500">New?</span></h2>
+              <h2 className="text-4xl font-black tracking-tighter uppercase italic">What's <span className="opacity-50">New?</span></h2>
             </div>
             <button 
               onClick={onClose}
@@ -107,8 +108,8 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ isOpen, onClose, v
                     {update.icon}
                   </div>
                   <div className="space-y-1">
-                    <h3 className="font-bold text-zinc-900 group-hover:text-indigo-600 transition-colors">{update.title}</h3>
-                    <p className="text-sm text-zinc-500 leading-relaxed font-medium">
+                    <h3 className={`font-bold ${styles?.text || 'text-zinc-900'} group-hover:${styles?.accentText || 'text-indigo-600'} transition-colors`}>{update.title}</h3>
+                    <p className={`text-sm ${styles?.muted || 'text-zinc-500'} leading-relaxed font-medium`}>
                       {update.description}
                     </p>
                   </div>
@@ -125,7 +126,7 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ isOpen, onClose, v
                   onClose();
                   onStartTour();
                 }}
-                className="flex-1 py-4 rounded-2xl bg-indigo-600 text-white font-black uppercase tracking-[0.2em] text-sm hover:bg-indigo-500 transition-all active:scale-95 shadow-xl flex items-center justify-center gap-2"
+                className={`flex-1 py-4 rounded-2xl ${styles?.accentBg || 'bg-indigo-600'} text-white font-black uppercase tracking-[0.2em] text-sm hover:opacity-90 transition-all active:scale-95 shadow-xl flex items-center justify-center gap-2`}
               >
                 <Sparkles size={18} />
                 Interactive Tour
@@ -133,7 +134,7 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ isOpen, onClose, v
             )}
             <button
               onClick={onClose}
-              className={`py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-sm transition-all active:scale-95 shadow-lg ${onStartTour ? 'flex-1 bg-zinc-100 text-zinc-900 hover:bg-zinc-200' : 'w-full bg-zinc-950 text-white hover:bg-zinc-800'}`}
+              className={`py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-sm transition-all active:scale-95 shadow-lg ${onStartTour ? (styles?.secondary || 'bg-zinc-100 text-zinc-900 hover:bg-zinc-200') + ' flex-1' : (styles?.button || 'bg-zinc-950 text-white hover:bg-zinc-800') + ' w-full'}`}
             >
               Continue
             </button>
