@@ -237,24 +237,24 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
           <div>
             <div className="flex items-center gap-3 mb-4">
               <span className="px-4 py-1.5 rounded-full bg-white/10 text-[10px] font-black uppercase tracking-[0.2em] backdrop-blur-md border border-white/10">
-                Central Intelligence
+                {t('Central Intelligence')}
               </span>
               <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500/20 text-green-400 text-[10px] font-black uppercase tracking-tighter border border-green-500/20">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" /> Live System
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" /> {t('Live System')}
               </span>
             </div>
             <h2 className="text-6xl font-black tracking-tighter leading-none mb-4 uppercase italic">
               Super <span className="text-zinc-500">Admin</span>
             </h2>
-            <p className="text-zinc-400 font-medium max-w-md">Global control interface for the Dressing Room ecosystem. Monitor performance, manage accounts, and oversee productions.</p>
+            <p className="text-zinc-400 font-medium max-w-md">{t('Global control interface for the Dressing Room ecosystem. Monitor performance, manage accounts, and oversee productions.')}</p>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full md:w-auto">
             {[
-              { label: 'Growth', value: '+12%', icon: TrendingUp },
-              { label: 'Uptime', value: '99.9%', icon: Activity },
-              { label: 'Reach', value: 'Global', icon: Globe },
-              { label: 'Nodes', value: companies.length, icon: Users },
+              { label: t('Growth'), value: '+12%', icon: TrendingUp },
+              { label: t('Uptime'), value: '99.9%', icon: Activity },
+              { label: t('Reach'), value: t('Global'), icon: Globe },
+              { label: t('Nodes'), value: companies.length, icon: Users },
             ].map((stat, i) => (
               <div key={i} className="p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm min-w-0 md:min-w-[120px]">
                 <stat.icon size={16} className="text-zinc-500 mb-2" />
@@ -276,40 +276,40 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
             <div className={`p-4 rounded-2xl ${styles.secondary}`}>
               <Users size={24} />
             </div>
-            <span className="text-[10px] font-black py-1 px-3 bg-black/5 rounded-full">TRANSIT</span>
+            <span className="text-[10px] font-black py-1 px-3 bg-black/5 rounded-full">{t('TRANSIT')}</span>
           </div>
           <p className="text-3xl sm:text-4xl font-black tracking-tighter mb-1 truncate">{companies.length}</p>
-          <p className={`text-xs font-bold uppercase tracking-widest truncate ${styles.muted}`}>Total Partners</p>
+          <p className={`text-xs font-bold uppercase tracking-widest truncate ${styles.muted}`}>{t('Total Partners')}</p>
         </div>
         <div className={`group p-6 sm:p-8 rounded-[2.5rem] border-2 shadow-2xl transition-all hover:scale-[1.02] ${styles.card}`}>
           <div className="flex justify-between items-start mb-6">
             <div className={`p-4 rounded-2xl ${styles.secondary}`}>
               <Activity size={24} />
             </div>
-            <span className="text-[10px] font-black py-1 px-3 bg-green-500/10 text-green-500 rounded-full">ACTIVE</span>
+            <span className="text-[10px] font-black py-1 px-3 bg-green-500/10 text-green-500 rounded-full">{t('ACTIVE')}</span>
           </div>
           <p className="text-3xl sm:text-4xl font-black tracking-tighter mb-1 truncate">{projects.length}</p>
-          <p className={`text-xs font-bold uppercase tracking-widest truncate ${styles.muted}`}>Productions</p>
+          <p className={`text-xs font-bold uppercase tracking-widest truncate ${styles.muted}`}>{t('Productions')}</p>
         </div>
         <div className={`group p-6 sm:p-8 rounded-[2.5rem] border-2 shadow-2xl transition-all hover:scale-[1.02] ${styles.card}`}>
           <div className="flex justify-between items-start mb-6">
             <div className={`p-4 rounded-2xl ${styles.secondary}`}>
               <Globe size={24} />
             </div>
-            <span className="text-[10px] font-black py-1 px-3 bg-blue-500/10 text-blue-500 rounded-full">TRAFFIC</span>
+            <span className={`text-[10px] font-black py-1 px-3 ${styles.accentBg.replace('bg-', 'bg-opacity-10 bg-')} ${styles.accentText} rounded-full`}>{t('TRAFFIC')}</span>
           </div>
           <p className="text-3xl sm:text-4xl font-black tracking-tighter mb-1 truncate">{visits.length}</p>
-          <p className={`text-xs font-bold uppercase tracking-widest truncate ${styles.muted}`}>System Visits</p>
+          <p className={`text-xs font-bold uppercase tracking-widest truncate ${styles.muted}`}>{t('System Visits')}</p>
         </div>
         <div className={`group p-6 sm:p-8 rounded-[2.5rem] border-2 shadow-2xl transition-all hover:scale-[1.02] ${styles.card}`}>
           <div className="flex justify-between items-start mb-6">
             <div className={`p-4 rounded-2xl ${styles.secondary}`}>
               <ShoppingBag size={24} />
             </div>
-            <span className="text-[10px] font-black py-1 px-3 bg-zinc-100 rounded-full">ASSETS</span>
+            <span className="text-[10px] font-black py-1 px-3 bg-zinc-100 rounded-full">{t('ASSETS')}</span>
           </div>
           <p className="text-3xl sm:text-4xl font-black tracking-tighter mb-1 truncate">{clothes.length}</p>
-          <p className={`text-xs font-bold uppercase tracking-widest truncate ${styles.muted}`}>Total Items</p>
+          <p className={`text-xs font-bold uppercase tracking-widest truncate ${styles.muted}`}>{t('Total Items')}</p>
         </div>
       </div>
 
@@ -317,7 +317,7 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
         <div className={`p-6 sm:p-8 rounded-[3rem] border-2 shadow-2xl backdrop-blur-xl ${styles.card} bg-opacity-80`}>
           <div className="flex items-center justify-between mb-8">
             <h3 className="font-black text-[10px] sm:text-xs uppercase tracking-widest opacity-50 flex items-center gap-2">
-              <Monitor size={14} /> Usage Distribution
+              <Monitor size={14} /> {t('Usage Distribution')}
             </h3>
             <div className="flex gap-2">
               <span className="w-2 h-2 rounded-full bg-black/20" />
@@ -326,8 +326,8 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
           </div>
           <div className="flex items-end gap-4 sm:gap-6 h-32 sm:h-40">
             {[
-              { label: 'Desktop', icon: Monitor },
-              { label: 'Mobile', icon: Smartphone }
+              { label: t('Desktop'), icon: Monitor },
+              { label: t('Mobile'), icon: Smartphone }
             ].map(device => {
               const count = companies.filter(c => c.last_device === device.label).length;
               const height = companies.length > 0 ? (count / companies.length) * 100 : 0;
@@ -359,9 +359,9 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
         <div className={`p-6 sm:p-8 rounded-[3rem] border-2 shadow-2xl backdrop-blur-xl ${styles.card} bg-opacity-80`}>
           <div className="flex items-center justify-between mb-8">
             <h3 className="font-black text-[10px] sm:text-xs uppercase tracking-widest opacity-50 flex items-center gap-2">
-              <Activity size={14} /> Critical Logs
+              <Activity size={14} /> {t('Critical Logs')}
             </h3>
-            <button className="text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-black transition-colors">Clear All</button>
+            <button className="text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-black transition-colors">{t('Clear All')}</button>
           </div>
           <div className="space-y-2 sm:space-y-3">
              {visits.slice(-3).reverse().map((v, i) => (
@@ -371,17 +371,17 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
                      {v.device === 'Mobile' ? <Smartphone size={12} className="sm:w-3.5 sm:h-3.5" /> : <Monitor size={12} className="sm:w-3.5 sm:h-3.5" />}
                    </div>
                    <div className="min-w-0">
-                     <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-tight truncate">{v.device} Engagement</p>
+                     <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-tight truncate">{v.device} {t('Engagement')}</p>
                      <p className="text-[8px] sm:text-[9px] font-medium opacity-50 truncate">{v.browser}</p>
                    </div>
                  </div>
                  <div className="flex items-center gap-1 text-[8px] sm:text-[10px] font-bold py-1 px-2 sm:px-3 rounded-lg bg-black/5 flex-shrink-0 ml-2">
-                   {v.company_id === 'anonymous' ? 'Anon' : 'Terminal'}
+                   {v.company_id === 'anonymous' ? t('Anon') : t('Terminal')}
                  </div>
                </div>
              ))}
              {visits.length === 0 && (
-               <div className="py-12 text-center opacity-30 italic text-xs">No active nodes detected...</div>
+               <div className="py-12 text-center opacity-30 italic text-xs">{t('No active nodes detected...')}</div>
              )}
           </div>
         </div>
@@ -436,43 +436,43 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
                   <div className="flex flex-col items-end gap-2 overflow-hidden">
                     {company.is_online ? (
                       <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-500/10 text-green-500 text-[10px] font-black uppercase tracking-tighter truncate max-w-full">
-                        <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse flex-shrink-0" /> Online
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse flex-shrink-0" /> {t('Online')}
                       </span>
                     ) : (
                       <span className="px-3 py-1 rounded-full bg-zinc-500/10 text-zinc-500 text-[10px] font-black uppercase tracking-tighter">
-                        Offline
+                        {t('Offline')}
                       </span>
                     )}
                   </div>
                 </div>
                 <h3 className="text-xl sm:text-2xl font-bold mb-1 truncate">{company.name}</h3>
-                <p className={`text-xs mb-6 truncate ${styles.accent}`}>slug: {company.slug}</p>
+                <p className={`text-xs mb-6 truncate ${styles.accent}`}>{t('slug')}: {company.slug}</p>
                 <button
                   onClick={async () => {
                     await updateDoc(doc(db, "companies", company.id), { is_paid: !company.is_paid });
                   }}
                   className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-tighter ${
-                    company.is_paid ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+                    company.is_paid ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
                   }`}
                 >
-                  {company.is_paid ? 'Paid' : 'Unpaid'}
+                  {company.is_paid ? t('Paid') : t('Unpaid')}
                 </button>
                 
                 <div className="space-y-3 pt-6 border-t">
                   <div className="flex justify-between text-xs font-bold">
-                    <span className={styles.muted}>Items</span>
+                    <span className={styles.muted}>{t('Items')}</span>
                     <span className="truncate ml-2">{clothes.filter(c => c.company_id === company.id).length}</span>
                   </div>
                   <div className="flex justify-between text-xs font-bold">
-                    <span className={styles.muted}>Projects</span>
+                    <span className={styles.muted}>{t('Projects')}</span>
                     <span className="truncate ml-2">{projects.filter(p => p.company_id === company.id).length}</span>
                   </div>
                   <div className="flex justify-between text-xs font-bold">
-                    <span className={styles.muted}>Session</span>
-                    <span className="truncate ml-2">{company.is_online ? formatSessionTime(company.session_start) : 'Offline'}</span>
+                    <span className={styles.muted}>{t('Session')}</span>
+                    <span className="truncate ml-2">{company.is_online ? formatSessionTime(company.session_start) : t('Offline')}</span>
                   </div>
                   <div className="flex justify-between text-xs font-bold">
-                    <span className={styles.muted}>Device</span>
+                    <span className={styles.muted}>{t('Device')}</span>
                     <span className="flex items-center gap-1 truncate ml-2">
                       {company.last_device === 'Mobile' ? <Smartphone size={10} /> : <Monitor size={10} />}
                       {company.last_device || 'N/A'}
@@ -485,7 +485,7 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
                     onClick={() => setSelectedCompanyId(company.id)}
                     className={`flex-1 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all ${styles.secondary} flex items-center justify-center gap-2 border-2 border-transparent active:border-black`}
                   >
-                    <Eye size={14} /> View
+                    <Eye size={14} /> {t('View')}
                   </button>
                   <button 
                     onClick={() => onDeleteCompany(company.id)}
@@ -510,8 +510,8 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
                 <Plus size={40} />
               </div>
               <div>
-                <p className="text-xl font-black tracking-tighter uppercase italic text-black">New Board</p>
-                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1 italic">Initialize production</p>
+                <p className="text-xl font-black tracking-tighter uppercase italic text-black">{t('New Board')}</p>
+                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1 italic">{t('Initialize production')}</p>
               </div>
             </button>
 
@@ -524,25 +524,25 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
                       <Activity size={32} />
                     </div>
                     <div className="flex flex-col items-end gap-2 overflow-hidden">
-                      <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 text-blue-500 text-[10px] font-black uppercase tracking-tighter truncate max-w-full">
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse flex-shrink-0" /> {company?.name || 'Production'}
+                      <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full ${styles.accentBg.replace('bg-', 'bg-opacity-10 bg-')} ${styles.accentText} text-[10px] font-black uppercase tracking-tighter truncate max-w-full`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${styles.accentBg} animate-pulse flex-shrink-0`} /> {company?.name || t('Production')}
                       </span>
                     </div>
                   </div>
                   <h3 className="text-xl sm:text-2xl font-bold mb-1 truncate">{project.name}</h3>
-                  <p className={`text-xs mb-6 truncate ${styles.accent}`}>{project.user_name || 'No Client'}</p>
+                  <p className={`text-xs mb-6 truncate ${styles.accent}`}>{project.user_name || t('No Client')}</p>
                   
                   <div className="space-y-3 pt-6 border-t font-bold">
                     <div className="flex justify-between text-xs">
-                      <span className={styles.muted}>Assets</span>
-                      <span className="truncate ml-2">{project.clothes_ids?.length || 0} Items</span>
+                      <span className={styles.muted}>{t('Assets')}</span>
+                      <span className="truncate ml-2">{project.clothes_ids?.length || 0} {t('Items')}</span>
                     </div>
                     <div className="flex justify-between text-xs">
-                      <span className={styles.muted}>Contact</span>
+                      <span className={styles.muted}>{t('Contact')}</span>
                       <span className="truncate ml-2">{project.user_phone || 'N/A'}</span>
                     </div>
                     <div className="flex justify-between text-xs">
-                      <span className={styles.muted}>Created</span>
+                      <span className={styles.muted}>{t('Created')}</span>
                       <span className="truncate ml-2">{project.created_at ? new Date(project.created_at.toDate()).toLocaleDateString() : 'N/A'}</span>
                     </div>
                   </div>
@@ -552,7 +552,7 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
                       onClick={() => setSelectedProjectId(project.id)}
                       className={`flex-1 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all ${styles.secondary} flex items-center justify-center gap-2 border-2 border-transparent active:border-black`}
                     >
-                      <Eye size={14} /> View
+                      <Eye size={14} /> {t('View')}
                     </button>
                     <button 
                       onClick={() => onDeleteProject(project.id)}
@@ -715,7 +715,7 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
                     <h3 className="text-[10px] font-black uppercase tracking-[0.3em] mb-6 sm:mb-8 text-zinc-400 border-b pb-4">Telemetrics</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
                       {[
-                        { label: 'Inventory Assets', value: companyClothes.length, icon: ShoppingBag, color: 'text-blue-600' },
+                        { label: 'Inventory Assets', value: companyClothes.length, icon: ShoppingBag, color: styles.accentText },
                         { label: 'Active Sessions', value: companyProjects.length, icon: Activity, color: 'text-purple-600' },
                         { label: 'Cloud Visits', value: companyVisits.length, icon: Eye, color: 'text-orange-600' },
                         { label: 'Uptime Duration', value: selectedCompany.is_online ? formatSessionTime(selectedCompany.session_start) : '00:00', icon: Clock, color: 'text-zinc-900' },
@@ -968,8 +968,8 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
               </div>
               
               <div className="flex items-center gap-4 flex-shrink-0">
-                <div className={`flex items-center gap-2 px-3 sm:px-4 py-1 sm:py-2 rounded-full border-2 bg-blue-50 border-blue-200 text-blue-700`}>
-                  <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-blue-500 animate-pulse" />
+                <div className={`flex items-center gap-2 px-3 sm:px-4 py-1 sm:py-2 rounded-full border-2 ${styles.secondary} ${styles.accentText}`}>
+                  <span className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${styles.accentBg} animate-pulse`} />
                   <p className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest">{projectCompany?.name || 'Live Project'}</p>
                 </div>
               </div>
@@ -979,7 +979,7 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
               {/* Project Status Stats */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-16">
                 {[
-                  { label: 'Cast Size', value: actorsList.length, icon: Users, color: 'bg-blue-50 text-blue-600' },
+                  { label: 'Cast Size', value: actorsList.length, icon: Users, color: styles.accentText },
                   { label: 'Total Assets', value: projectClothes.length, icon: ShoppingBag, color: 'bg-purple-50 text-purple-600' },
                   { label: 'Active Rentals', value: projectRentals.length, icon: Package, color: 'bg-zinc-100 text-zinc-900' },
                   { label: 'Waitlist', value: '0', icon: Clock, color: 'bg-zinc-100 text-zinc-400' },

@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useTranslation } from 'react-i18next';
 import { X, Phone, Facebook, User, Crown, ExternalLink } from 'lucide-react';
 
 const bannerImg = 'https://picsum.photos/seed/premium_banner/800/400';
@@ -21,6 +22,8 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
   facebookUrl,
   styles
 }) => {
+  const { t } = useTranslation();
+  
   return (
     <AnimatePresence>
       {isOpen && (
@@ -61,26 +64,25 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                 <div className="w-8 h-8 sm:w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-2 sm:mb-3">
                   <Crown className="text-yellow-400" size={18} fill="currentColor" />
                 </div>
-                <h2 className="text-lg sm:text-xl font-black uppercase tracking-tight">Premium Production Suite</h2>
+                <h2 className="text-lg sm:text-xl font-black uppercase tracking-tight">{t('Premium Production Suite')}</h2>
               </div>
             </div>
 
             <div className="p-6 sm:p-8 space-y-5 sm:space-y-6">
               <div>
                 <p className={`${styles?.muted || 'text-zinc-600'} font-medium leading-relaxed`}>
-                  Elevate your project management with our <span className={`font-bold ${styles?.text || 'text-black'} uppercase tracking-wider text-sm italic`}>Production Panel</span>. Designed for professionals who demand excellence.
+                  {t('Elevate your project management with our')} <span className={`font-bold ${styles?.text || 'text-black'} uppercase tracking-wider text-sm italic`}>{t('Production Panel')}</span>. {t('Designed for professionals who demand excellence.')}
                 </p>
-                <div className={`mt-5 p-5 rounded-[2rem] bg-gradient-to-br from-indigo-50/50 to-purple-50/50 border ${styles?.accentBg ? 'border-transparent' : 'border-indigo-100'} flex items-start gap-4 shadow-sm backdrop-blur-sm relative overflow-hidden group`}>
-                  <div className={`absolute inset-0 ${styles?.accentBg || 'bg-indigo-500'} opacity-5`} />
+                <div className={`mt-5 p-5 rounded-[2rem] bg-zinc-500/5 border ${styles?.border || 'border-zinc-100'} flex items-start gap-4 shadow-sm relative overflow-hidden group`}>
                   <div className={`mt-1 w-2 h-2 rounded-full ${styles?.accentBg || 'bg-indigo-500'} animate-pulse shrink-0`} />
                   <p className={`${styles?.accentText || 'text-indigo-800'} text-xs font-bold leading-relaxed relative z-10`}>
-                    This advanced module is part of our Premium tier. Upgrade your account today for full access to projects, actors, and scheduling tools.
+                    {t('This advanced module is part of our Premium tier. Upgrade your account today for full access to projects, actors, and scheduling tools.')}
                   </p>
                 </div>
               </div>
 
               <div className="space-y-4">
-                <h3 className={`text-[10px] font-black uppercase tracking-[0.3em] ${styles?.muted || 'text-zinc-400'}`}>Get Unlocked Instantly</h3>
+                <h3 className={`text-[10px] font-black uppercase tracking-[0.3em] ${styles?.muted || 'text-zinc-400'}`}>{t('Get Unlocked Instantly')}</h3>
                 
                 <div className="space-y-3">
                   {/* Name Card */}
@@ -89,7 +91,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                       <User size={18} />
                     </div>
                     <div>
-                      <p className={`text-[9px] font-black uppercase tracking-widest ${styles?.muted || 'text-zinc-400'}`}>Developer</p>
+                      <p className={`text-[9px] font-black uppercase tracking-widest ${styles?.muted || 'text-zinc-400'}`}>{t('Developer')}</p>
                       <p className={`text-sm font-bold ${styles?.text || 'text-black'}`}>{name}</p>
                     </div>
                   </div>
@@ -104,7 +106,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                         <Phone size={18} />
                       </div>
                       <div>
-                        <p className={`text-[9px] font-black uppercase tracking-widest ${styles?.muted || 'text-zinc-400'}`}>Phone & WhatsApp</p>
+                        <p className={`text-[9px] font-black uppercase tracking-widest ${styles?.muted || 'text-zinc-400'}`}>{t('Phone & WhatsApp')}</p>
                         <p className={`text-sm font-bold ${styles?.text || 'text-black'}`}>{phone}</p>
                       </div>
                     </div>
@@ -123,8 +125,8 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                         <Facebook size={18} />
                       </div>
                       <div>
-                        <p className={`text-[9px] font-black uppercase tracking-widest ${styles?.muted || 'text-zinc-400'}`}>Facebook Profile</p>
-                        <p className={`text-sm font-bold ${styles?.text || 'text-black'}`}>Visit Profile</p>
+                        <p className={`text-[9px] font-black uppercase tracking-widest ${styles?.muted || 'text-zinc-400'}`}>{t('Facebook Profile')}</p>
+                        <p className={`text-sm font-bold ${styles?.text || 'text-black'}`}>{t('Visit Profile')}</p>
                       </div>
                     </div>
                     <ExternalLink size={14} className={`${styles?.muted || 'text-zinc-300'} transition-colors group-hover:text-zinc-400`} />
@@ -134,10 +136,12 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 
               <button 
                 onClick={onClose}
-                className={`w-full py-4 rounded-2xl ${styles?.button || 'bg-zinc-900 text-white'} text-xs font-black uppercase tracking-[0.2em] transition-all shadow-lg active:scale-[0.98]`}
+                className={`w-full py-4 rounded-2xl ${styles?.button || 'bg-zinc-900 text-white'} flex items-center justify-center gap-2 text-xs font-black uppercase tracking-[0.2em] transition-all shadow-lg active:scale-[0.98]`}
               >
-                Got it
+                <Crown size={18} fill="currentColor" />
+                {t('Got it')}
               </button>
+
             </div>
           </motion.div>
         </div>

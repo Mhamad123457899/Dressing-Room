@@ -299,7 +299,7 @@ export const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
               <div className="p-8 space-y-10">
                 {/* Profile Section */}
                 <section className="space-y-4">
-                  <h3 className={`text-[10px] font-black uppercase tracking-[0.2em] border-l-2 pl-3 ${styles.accent} border-indigo-500`}>{t('General Information')}</h3>
+                  <h3 className={`text-[10px] font-black uppercase tracking-[0.2em] border-l-2 pl-3 ${styles.accent} ${styles.accentBg.replace('bg-', 'border-')}`}>{t('General Information')}</h3>
                   <div className={`space-y-4 p-6 rounded-3xl border shadow-sm ${styles.card}`}>
                     <div className="space-y-1.5">
                       <label className={`text-[10px] font-bold uppercase tracking-wider ml-1 ${styles.muted}`}>{t('Company Name')}</label>
@@ -426,7 +426,7 @@ export const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
                         <div className={`p-4 rounded-2xl text-sm font-medium shadow-sm leading-relaxed ${
                           msg.sender === 'bot' 
                             ? `${styles.card} border-zinc-100 rounded-tl-none` 
-                            : `${styles.inverted} rounded-tr-none shadow-indigo-100`
+                            : `${styles.inverted} rounded-tr-none shadow-sm`
                         }`}>
                           {msg.text}
                         </div>

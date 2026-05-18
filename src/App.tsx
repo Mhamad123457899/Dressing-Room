@@ -328,11 +328,12 @@ const THEMES = {
     modal: "bg-white text-zinc-900",
     badge: "bg-black text-white",
     inverted: "bg-black text-white",
-    premium: "from-amber-400 to-orange-500",
-    premiumBtn: "text-orange-600",
-    tourPing: "bg-blue-500",
-    accentText: "text-blue-600",
-    accentBg: "bg-blue-600"
+    premium: "from-indigo-50 to-purple-50 border-2 border-indigo-100",
+    premiumText: "text-indigo-900",
+    premiumBtn: "bg-indigo-600 text-white shadow-indigo-200",
+    tourPing: "bg-blue-600",
+    accentText: "text-indigo-600",
+    accentBg: "bg-indigo-600"
   },
   dark: {
     bg: "bg-zinc-950",
@@ -348,8 +349,9 @@ const THEMES = {
     modal: "bg-zinc-900 text-zinc-100",
     badge: "bg-white text-black",
     inverted: "bg-white text-black",
-    premium: "from-amber-600 to-orange-700",
-    premiumBtn: "text-orange-700",
+    premium: "from-indigo-600 to-purple-700 shadow-indigo-900/50",
+    premiumText: "text-white",
+    premiumBtn: "bg-white text-indigo-700 shadow-xl",
     tourPing: "bg-blue-400",
     accentText: "text-blue-400",
     accentBg: "bg-blue-400"
@@ -368,8 +370,9 @@ const THEMES = {
     modal: "bg-[#fdf6e3] text-[#586e75]",
     badge: "bg-[#b58900] text-white",
     inverted: "bg-[#b58900] text-white",
-    premium: "from-[#b58900] to-[#cb4b16]",
-    premiumBtn: "text-[#cb4b16]",
+    premium: "from-[#eee8d5] to-[#d3cbb7] border-2 border-[#b58900]/20",
+    premiumText: "text-[#586e75]",
+    premiumBtn: "bg-[#b58900] text-white",
     tourPing: "bg-[#b58900]",
     accentText: "text-[#b58900]",
     accentBg: "bg-[#b58900]"
@@ -388,8 +391,9 @@ const THEMES = {
     modal: "bg-[#fff1f2] text-[#9f1239]",
     badge: "bg-[#e11d48] text-white",
     inverted: "bg-[#e11d48] text-white",
-    premium: "from-rose-500 to-pink-600",
-    premiumBtn: "text-rose-600",
+    premium: "from-rose-500 to-pink-600 shadow-rose-900/40",
+    premiumText: "text-white",
+    premiumBtn: "bg-white text-rose-600 shadow-xl",
     tourPing: "bg-rose-500",
     accentText: "text-rose-600",
     accentBg: "bg-rose-600"
@@ -487,7 +491,7 @@ const Navbar = ({ isAdmin, onOpenAdmin, onOpenProfile, onStartTour, t, currentCo
               }}
               className={`px-2 py-1.5 rounded-md text-[8px] sm:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-1 sm:gap-1.5 ${activeView === 'production' ? styles.button + " shadow-sm" : 'hover:bg-black/5 opacity-60'}`}
             >
-              <Activity size={12} /> <span className="hidden sm:inline">{t('Production')}</span>
+              <Crown size={12} className={currentCompany?.is_paid ? "" : "text-yellow-500"} fill={currentCompany?.is_paid ? "currentColor" : "none"} /> <span className="hidden sm:inline">{t('Production')}</span>
             </button>
           </div>
         )}
@@ -1231,10 +1235,10 @@ const ProductionBoard = ({
       return (
         <>
           {fullscreenSceneNum && createPortal(
-            <div className="fixed inset-0 z-[400] flex flex-col bg-zinc-50 dark:bg-zinc-950 overflow-hidden">
+            <div className={`fixed inset-0 z-[400] flex flex-col overflow-hidden ${styles.bg} ${styles.text}`}>
               <div className={`flex items-center justify-between p-6 sm:p-10 border-b flex-shrink-0 ${styles.bg}`}>
                 <div className="flex items-center gap-6">
-                  <div className={`p-4 rounded-3xl bg-black text-white`}>
+                  <div className={`p-4 rounded-3xl ${styles.badge}`}>
                     <Layers size={32} />
                   </div>
                   <div>
@@ -1375,10 +1379,10 @@ const ProductionBoard = ({
                       <h2 className="text-2xl sm:text-4xl font-black tracking-tighter truncate">{t('Select Items')}</h2>
                       <div className="flex flex-wrap items-center gap-4">
                         <div className="flex items-center gap-2">
-                          <span className={`px-4 py-1 rounded-xl text-xs sm:text-sm font-black uppercase tracking-widest bg-black text-white`}>{t('Scene')} {sceneNumber}</span>
+                          <span className={`px-4 py-1 rounded-xl text-xs sm:text-sm font-black uppercase tracking-widest ${styles.badge}`}>{t('Scene')} {sceneNumber}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className={`px-4 py-1 rounded-xl text-xs sm:text-sm font-black uppercase tracking-widest bg-zinc-100 text-zinc-500`}>{t('Shot')} {shotNumber}</span>
+                          <span className={`px-4 py-1 rounded-xl text-xs sm:text-sm font-black uppercase tracking-widest ${styles.secondary}`}>{t('Shot')} {shotNumber}</span>
                         </div>
                         <span className={`text-[10px] sm:text-sm truncate ${styles.accent}`}>{t('for')} {selectedActor.name}</span>
                       </div>
@@ -1405,7 +1409,7 @@ const ProductionBoard = ({
                   setSelectedShotClothingIds([]);
                 }}
                 disabled={selectedShotClothingIds.length === 0}
-                className={`flex-1 xl:flex-none px-6 sm:px-10 py-4 sm:py-5 rounded-[1.5rem] sm:rounded-[2rem] font-black uppercase tracking-widest text-[10px] sm:text-sm shadow-xl flex items-center justify-center gap-3 transition-all active:scale-95 ${styles.button} ${selectedShotClothingIds.length === 0 ? 'opacity-50 grayscale cursor-not-allowed' : 'hover:scale-105 shadow-blue-500/30'}`}
+                className={`flex-1 xl:flex-none px-6 sm:px-10 py-4 sm:py-5 rounded-[1.5rem] sm:rounded-[2rem] font-black uppercase tracking-widest text-[10px] sm:text-sm shadow-xl flex items-center justify-center gap-3 transition-all active:scale-95 ${styles.button} ${selectedShotClothingIds.length === 0 ? 'opacity-50 grayscale cursor-not-allowed' : 'hover:scale-105 shadow-indigo-500/30'}`}
               >
                 <span className="hidden sm:inline">{t('Confirm Selection')}</span>
                 <span className="sm:hidden">{t('Confirm')}</span>
@@ -1436,7 +1440,7 @@ const ProductionBoard = ({
                         setNotification({ message: "You can only select up to 2 items per shot", type: "error" });
                       }
                     }}
-                    className={`relative rounded-[2.5rem] overflow-hidden cursor-pointer group transition-all border-4 ${isSelected ? 'border-blue-500 shadow-2xl scale-[0.98]' : 'border-transparent shadow-lg hover:shadow-xl'}`}
+                    className={`relative rounded-[2.5rem] overflow-hidden cursor-pointer group transition-all border-4 ${isSelected ? styles.accentText.replace('text-', 'border-') + ' shadow-2xl scale-[0.98]' : 'border-transparent shadow-lg hover:shadow-xl'}`}
                   >
                     <div className="aspect-[3/4] overflow-hidden bg-zinc-100 shimmer">
                       <img 
@@ -1463,7 +1467,7 @@ const ProductionBoard = ({
                             ))}
                           </div>
                         </div>
-                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${isSelected ? 'bg-blue-500 scale-110' : 'bg-white/20 group-hover:bg-white/40'}`}>
+                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${isSelected ? styles.accentBg + ' scale-110' : 'bg-white/20 group-hover:bg-white/40'}`}>
                           {isSelected ? <Check size={20} /> : <Plus size={20} />}
                         </div>
                       </div>
@@ -1570,10 +1574,10 @@ const ProductionBoard = ({
                   <div key={scene.id} className={`rounded-[2rem] border-2 shadow-sm overflow-hidden ${styles.card} hover:scale-[1.01] transition-all active:scale-[0.99] border-zinc-200`}>
                     <div 
                       onClick={() => setFullscreenSceneNum(String(sceneNum))}
-                      className={`w-full flex flex-col sm:flex-row sm:items-center justify-between p-8 cursor-pointer transition-all gap-4 hover:bg-black/5 dark:hover:bg-white/5 active:bg-blue-500/10 text-left`}
+                      className={`w-full flex flex-col sm:flex-row sm:items-center justify-between p-8 cursor-pointer transition-all gap-4 hover:bg-black/5 dark:hover:bg-white/5 active:${styles.accentBg}/10 text-left`}
                     >
                       <div className="flex items-center gap-6">
-                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center bg-black text-white shadow-xl`}>
+                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${styles.badge} shadow-xl`}>
                           <Layers size={24} />
                         </div>
                         <div>
@@ -1603,7 +1607,7 @@ const ProductionBoard = ({
             e.stopPropagation();
             setFullscreenSceneNum(String(sceneNum));
           }}
-          className={`p-4 rounded-2xl border-2 hover:bg-blue-500 hover:text-white transition-all shadow-sm ${styles.secondary}`}
+          className={`p-4 rounded-2xl border-2 hover:${styles.accentBg} hover:text-white transition-all shadow-sm ${styles.secondary}`}
         >
            <Maximize2 size={20} />
         </button>
@@ -1658,10 +1662,10 @@ const ProductionBoard = ({
           )}
 
           {fullscreenSceneNum && createPortal(
-            <div className="fixed inset-0 z-[400] flex flex-col bg-zinc-50 dark:bg-zinc-950 overflow-hidden">
+            <div className={`fixed inset-0 z-[400] flex flex-col overflow-hidden ${styles.bg} ${styles.text}`}>
               <div className={`flex items-center justify-between p-6 sm:p-10 border-b flex-shrink-0 ${styles.bg}`}>
                 <div className="flex items-center gap-6">
-                  <div className={`p-4 rounded-3xl bg-black text-white`}>
+                  <div className={`p-4 rounded-3xl ${styles.badge}`}>
                     <Layers size={32} />
                   </div>
                   <div>
@@ -1808,7 +1812,7 @@ const ProductionBoard = ({
               {!isViewOnly && (
                 <button 
                   onClick={() => setShowAddActor(true)}
-                  className={`flex items-center justify-center gap-3 px-8 py-4 rounded-3xl font-black uppercase tracking-widest text-sm shadow-xl transition-all active:scale-95 ${styles.button} hover:shadow-blue-500/20`}
+                  className={`flex items-center justify-center gap-3 px-8 py-4 rounded-3xl font-black uppercase tracking-widest text-sm shadow-xl transition-all active:scale-95 ${styles.button} hover:shadow-indigo-500/20`}
                 >
                   <Plus size={20} /> {t('Add Actor')}
                 </button>
@@ -1834,17 +1838,17 @@ const ProductionBoard = ({
                 key={actor.id}
                 whileHover={{ y: -10 }}
                 onClick={() => setSelectedActor(actor)}
-                className={`p-8 rounded-[2.5rem] border group cursor-pointer transition-all ${styles.card} hover:border-blue-500 hover:shadow-2xl hover:shadow-blue-500/10`}
+                className={`p-8 rounded-[2.5rem] border group cursor-pointer transition-all ${styles.card} hover:${styles.accentText.replace('text-', 'border-')} hover:shadow-2xl`}
               >
                 <div className="flex items-center justify-between gap-4 mb-6 transition-all group-hover:scale-105">
                   <div className={`w-16 h-16 rounded-3xl flex items-center justify-center ${styles.secondary}`}>
-                    <User size={32} className="text-blue-500" />
+                  <User size={32} className={styles.accentText} />
                   </div>
                   {!isViewOnly && (
                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button 
                         onClick={(e) => { e.stopPropagation(); handleEditActor(actor); }}
-                        className={`p-3 rounded-2xl border ${styles.secondary} hover:text-blue-500 transition-all`}
+                        className={`p-3 rounded-2xl border ${styles.secondary} hover:${styles.accentText} transition-all`}
                       >
                         <Edit2 size={16} />
                       </button>
@@ -1868,7 +1872,7 @@ const ProductionBoard = ({
             {!isViewOnly && projectActors.length === 0 && (
               <div 
                 onClick={() => setShowAddActor(true)}
-                className="p-8 rounded-[2.5rem] border-2 border-dashed flex flex-col items-center justify-center text-center cursor-pointer hover:border-blue-500 transition-all group"
+                className={`p-8 rounded-[2.5rem] border-2 border-dashed flex flex-col items-center justify-center text-center cursor-pointer hover:${styles.accentText.replace('text-', 'border-')} transition-all group`}
               >
                 <div className={`w-16 h-16 rounded-3xl flex items-center justify-center mb-6 ${styles.secondary}`}>
                   <Plus size={32} className="opacity-20 group-hover:opacity-100 transition-opacity" />
@@ -1906,7 +1910,7 @@ const ProductionBoard = ({
                     </div>
                     <div className="text-right">
                       <p className="text-[10px] font-black uppercase tracking-widest opacity-30">{new Date().toLocaleDateString()}</p>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-blue-500">{t('Page for')} {actor.name}</p>
+                      <p className={`text-[10px] font-black uppercase tracking-widest ${styles.accentText}`}>{t('Page for')} {actor.name}</p>
                     </div>
                   </div>
 
@@ -1940,7 +1944,7 @@ const ProductionBoard = ({
 
                   {/* Shots Grid */}
                   <div className="flex-1">
-                     <h3 className="text-sm font-black uppercase tracking-widest mb-6 border-l-4 border-blue-500 pl-4">{t('Selected Shots & Wardrobe')}</h3>
+                     <h3 className={`text-sm font-black uppercase tracking-widest mb-6 border-l-4 ${styles.accentBg.replace('bg-', 'border-')} pl-4`}>{t('Selected Shots & Wardrobe')}</h3>
                      <div className="space-y-8">
                        {Object.entries(shotsByScene).map(([sceneNum, sceneShots]) => (
                          <div key={sceneNum}>
@@ -2040,7 +2044,7 @@ const ProductionBoard = ({
         {!isViewOnly && (
           <button 
             onClick={() => setShowAddProject(true)}
-            className={`w-full sm:w-auto flex items-center justify-center gap-3 px-10 py-5 rounded-[2rem] font-black uppercase tracking-widest text-sm shadow-2xl transition-all active:scale-95 ${styles.button} hover:shadow-blue-500/20`}
+            className={`w-full sm:w-auto flex items-center justify-center gap-3 px-10 py-5 rounded-[2rem] font-black uppercase tracking-widest text-sm shadow-2xl transition-all active:scale-95 ${styles.button} hover:shadow-indigo-500/20`}
           >
             <Plus size={24} /> {t('New Production')}
           </button>
@@ -2063,7 +2067,7 @@ const ProductionBoard = ({
                 <div className="flex gap-2">
                   <button 
                     onClick={(e) => { e.stopPropagation(); handleEditProject(project); }}
-                    className={`p-3 rounded-2xl border ${styles.secondary} hover:text-blue-500 hover:border-blue-500/50 transition-all shadow-sm active:scale-95`}
+                    className={`p-3 rounded-2xl border ${styles.secondary} hover:${styles.accentText} hover:border-blue-500/50 transition-all shadow-sm active:scale-95`}
                   >
                     <Edit2 size={18} />
                   </button>
@@ -2076,7 +2080,7 @@ const ProductionBoard = ({
                 </div>
               )}
             </div>
-            <h3 className="text-2xl font-bold mb-2 group-hover:text-blue-500 transition-colors">{project.name}</h3>
+            <h3 className={`text-2xl font-bold mb-2 group-hover:${styles.accentText} transition-colors`}>{project.name}</h3>
             <p className={`mb-8 line-clamp-2 ${styles.accent}`}>{project.description}</p>
             <div className="flex justify-between items-center pt-8 border-t">
               <span className={`text-[10px] font-black uppercase tracking-widest opacity-50`}>{new Date(project.created_at?.toDate()).toLocaleDateString()}</span>
@@ -2179,7 +2183,7 @@ const ProductionBoard = ({
                   <button 
                     type="submit" 
                     disabled={isSubmitting} 
-                    className={`w-full py-6 rounded-[2.5rem] font-black uppercase tracking-widest text-sm shadow-2xl shadow-blue-500/20 transition-all active:scale-[0.98] flex items-center justify-center gap-3 ${styles.button}`}
+                    className={`w-full py-6 rounded-[2.5rem] font-black uppercase tracking-widest text-sm shadow-2xl shadow-indigo-500/20 transition-all active:scale-[0.98] flex items-center justify-center gap-3 ${styles.button}`}
                   >
                     {isSubmitting ? (
                       <>
@@ -2264,7 +2268,7 @@ const ProductionBoard = ({
                       <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${styles.inverted}`}>Shot {shot.shot_number}</span>
                       {!isViewOnly && (
                         <div className="flex gap-1">
-                          <button onClick={() => { setFullscreenSceneNum(null); handleEditShot(shot); }} className={`p-2 rounded-lg border border-zinc-200 ${styles.secondary} hover:text-blue-500 transition-colors`}>
+                          <button onClick={() => { setFullscreenSceneNum(null); handleEditShot(shot); }} className={`p-2 rounded-lg border border-zinc-200 ${styles.secondary} hover:${styles.accentText} transition-colors`}>
                             <Edit2 size={14} />
                           </button>
                           <button onClick={() => handleDeleteShot(shot.id)} className={`p-2 rounded-lg border border-zinc-200 ${styles.secondary} hover:text-red-500 transition-colors`}>
@@ -2944,7 +2948,7 @@ const AdminPanel = ({
                 {/* Profile Information */}
                 <section className="space-y-6">
                   <div className="flex items-center gap-2 mb-4">
-                    <User size={18} className="text-indigo-500" />
+                    <User size={18} className={styles.accentText} />
                     <h4 className={`text-xs font-black uppercase tracking-[0.2em] ${styles.muted}`}>{t('Account Identity')}</h4>
                   </div>
                   
@@ -3125,7 +3129,7 @@ const AdminPanel = ({
                         onClose(); // Close Admin Panel
                         setShowAccountSettings(true); // Open chatbot
                       }}
-                      className={`text-[11px] font-black uppercase tracking-[0.2em] transition-colors py-4 flex items-center justify-center gap-2 ${styles.muted} hover:text-indigo-600`}
+                      className={`text-[11px] font-black uppercase tracking-[0.2em] transition-colors py-4 flex items-center justify-center gap-2 ${styles.muted} hover:${styles.accentText}`}
                     >
                       <HelpCircle size={14} />
                       {t('Are you forget your password? Use AI Assistant')}
@@ -3140,7 +3144,7 @@ const AdminPanel = ({
             <div className="lg:col-span-1">
               <div className={`p-8 rounded-3xl border sticky top-12 ${styles.card}`}>
                 <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-                  <Calendar className="text-blue-500" /> {editingCollection ? 'Edit Collection' : 'New Collection'}
+                  <Calendar className={styles.accentText} /> {editingCollection ? 'Edit Collection' : 'New Collection'}
                 </h3>
                 <form onSubmit={handleAddCollection} className="space-y-6">
                   <div>
@@ -3264,7 +3268,7 @@ const AdminPanel = ({
             <div className="lg:col-span-1">
               <div className={`p-8 rounded-3xl border sticky top-12 ${styles.card}`}>
                 <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-                  <User className="text-indigo-500" /> {editingClient ? 'Edit Client Account' : 'New Client Account'}
+                  <User className={styles.accentText} /> {editingClient ? 'Edit Client Account' : 'New Client Account'}
                 </h3>
                 <form onSubmit={handleAddClient} className="space-y-6">
                   <div>
@@ -3412,7 +3416,7 @@ const AdminPanel = ({
                           setViewingClientRentals(clientRentals);
                           setRentalMonthFilter(0);
                         }}
-                        className="w-full py-2 bg-indigo-500 text-white rounded-xl text-xs font-bold hover:bg-indigo-600 transition-all"
+                        className={`w-full py-2 ${styles.accentBg} text-white rounded-xl text-xs font-bold hover:opacity-90 transition-all`}
                       >
                         Show Rented Clothes
                       </button>
@@ -4895,23 +4899,25 @@ function App() {
           <motion.div 
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`mb-12 p-6 rounded-[2.5rem] bg-gradient-to-r ${styles.premium} text-white flex flex-col sm:flex-row items-center justify-between gap-6 shadow-2xl relative overflow-hidden group`}
+            className={`mb-12 p-6 rounded-[2.5rem] bg-gradient-to-r ${styles.premium} ${styles.premiumText} flex flex-col sm:flex-row items-center justify-between gap-6 shadow-2xl relative overflow-hidden group`}
           >
-            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 blur-3xl -mr-32 -mt-32 group-hover:scale-110 transition-transform duration-1000" />
+            <div className={`absolute top-0 right-0 w-64 h-64 bg-current opacity-5 blur-3xl -mr-32 -mt-32 group-hover:scale-110 transition-transform duration-1000`} />
+            <Crown className="absolute -top-10 -right-6 w-48 h-48 opacity-[0.03] text-current -rotate-12 group-hover:scale-110 transition-transform duration-1000 pointer-events-none" />
             <div className="flex items-center gap-5 relative z-10">
-              <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30">
-                <Crown size={28} fill="currentColor" />
+              <div className={`w-14 h-14 rounded-2xl bg-current bg-opacity-10 backdrop-blur-md flex items-center justify-center border border-current border-opacity-20`}>
+                <Crown size={28} className="text-yellow-400 drop-shadow-md" fill="currentColor" />
               </div>
               <div>
-                <h3 className="text-xl font-black uppercase tracking-tighter italic">Premium Features Available</h3>
-                <p className="text-xs font-bold opacity-80 uppercase tracking-widest">Upgrade to unlock Production, Scenes & Team Management</p>
+                <h3 className="text-xl font-black uppercase tracking-tighter italic">{t('Premium Features Available')}</h3>
+                <p className="text-xs font-bold opacity-70 uppercase tracking-widest">{t('Upgrade to unlock Production, Scenes & Team Management')}</p>
               </div>
             </div>
             <button 
               onClick={() => setShowSubscriptionModal(true)}
-              className={`px-10 py-4 rounded-2xl bg-white ${styles.premiumBtn} text-[10px] font-black uppercase tracking-[0.2em] hover:scale-105 transition-all shadow-xl active:scale-95 relative z-10`}
+              className={`px-10 py-4 flex items-center gap-2 rounded-2xl ${styles.premiumBtn} text-[10px] font-black uppercase tracking-[0.2em] hover:scale-105 transition-all shadow-xl active:scale-95 relative z-10 border border-black/5`}
             >
-              Access Premium
+              <Crown size={14} fill="currentColor" />
+              {t('Access Premium')}
             </button>
           </motion.div>
         )}
@@ -5224,7 +5230,7 @@ function App() {
                         </div>
                         <div>
                           <p className="font-bold text-sm">{client.full_name}</p>
-                          <p className={`text-xs ${rentalForm.client_id === client.id ? "text-white/60" : styles.accent}`}>{client.phone}</p>
+                          <p className={`text-xs ${rentalForm.client_id === client.id ? "opacity-60" : styles.accent}`}>{client.phone}</p>
                         </div>
                         {rentalForm.client_id === client.id && <Check size={16} className="ml-auto" />}
                       </button>
