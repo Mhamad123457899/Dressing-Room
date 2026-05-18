@@ -434,22 +434,22 @@ const Navbar = ({ isAdmin, onOpenAdmin, onOpenProfile, t, currentCompany, isView
   ];
 
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-md border-b px-2 min-[400px]:px-6 py-4 flex justify-between items-center transition-colors duration-300 ${styles.navbar}`}>
-      <div className="flex items-center gap-4 sm:gap-12 flex-wrap">
-        <div className="flex items-center gap-4 sm:gap-8">
-          <Logo size={48} src={currentCompany?.logo_url} />
-          <h1 className={`text-xl font-black tracking-tighter uppercase italic ${styles.text} hidden lg:inline-block`}>
+    <nav className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-md border-b px-3 py-2.5 flex justify-between items-center transition-colors duration-300 ${styles.navbar}`}>
+      <div className="flex items-center gap-3 sm:gap-6">
+        <div className="flex items-center gap-2 sm:gap-4">
+          <Logo size={40} src={currentCompany?.logo_url} />
+          <h1 className={`text-lg font-black tracking-tighter uppercase italic ${styles.text} hidden md:inline-block`}>
             {currentCompany?.name || 'Admin Panel'}
           </h1>
         </div>
         
         {!isSuperAdmin && (
-          <div className={`flex items-center gap-2 p-2 rounded-2xl ${styles.secondary} shadow-inner`}>
+          <div className={`flex items-center gap-1.5 p-1.5 rounded-xl ${styles.secondary} shadow-inner`}>
             <button 
               onClick={() => setActiveView('closet')}
-              className={`px-4 sm:px-6 py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeView === 'closet' ? styles.button + " shadow-lg" : 'hover:bg-black/5 opacity-60'}`}
+              className={`px-3 sm:px-4 py-2 rounded-lg text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeView === 'closet' ? styles.button + " shadow-md" : 'hover:bg-black/5 opacity-60'}`}
             >
-              <History size={14} /> <span>{t('Closet')}</span>
+              <History size={13} /> <span>{t('Closet')}</span>
             </button>
             <button 
               onClick={() => {
@@ -459,29 +459,29 @@ const Navbar = ({ isAdmin, onOpenAdmin, onOpenProfile, t, currentCompany, isView
                   setShowSubscriptionModal(true);
                 }
               }}
-              className={`px-4 sm:px-6 py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeView === 'production' ? styles.button + " shadow-lg" : 'hover:bg-black/5 opacity-60'}`}
+              className={`px-3 sm:px-4 py-2 rounded-lg text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeView === 'production' ? styles.button + " shadow-md" : 'hover:bg-black/5 opacity-60'}`}
             >
-              <Activity size={14} /> <span>{t('Production')}</span>
+              <Activity size={13} /> <span>{t('Production')}</span>
             </button>
           </div>
         )}
       </div>
-      <div className="flex items-center gap-4 sm:gap-8 flex-wrap justify-end">
-        <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3 sm:gap-4 justify-end">
+        <div className="flex items-center gap-2">
           <div className="relative">
             <button 
               onClick={() => {
                 setShowLangMenu(!showLangMenu);
                 setShowThemeMenu(false);
               }}
-              className={`p-3 rounded-xl transition-all flex items-center gap-2 shadow-sm ${styles.secondary} hover:scale-105 active:scale-95`}
+              className={`w-8 h-8 rounded-lg transition-all flex items-center justify-center shadow-sm ${styles.secondary} hover:scale-105 active:scale-95`}
               title="Change Language"
             >
-              <span className="text-[10px] font-black uppercase tracking-tighter">{i18n.language.split('-')[0]}</span>
+              <span className="text-[9px] font-black uppercase tracking-tighter">{i18n.language.split('-')[0]}</span>
             </button>
             
             {showLangMenu && (
-              <div className={`absolute top-full right-0 mt-3 p-2 rounded-2xl shadow-2xl border min-w-[140px] ${styles.card} z-[60] animate-in fade-in slide-in-from-top-2`}>
+              <div className={`absolute top-full right-0 mt-3 p-1.5 rounded-xl shadow-2xl border min-w-[130px] ${styles.card} z-[60] animate-in fade-in slide-in-from-top-2`}>
                 <div className="flex flex-col gap-1">
                   {languages.map((lang) => (
                     <button
@@ -490,10 +490,10 @@ const Navbar = ({ isAdmin, onOpenAdmin, onOpenProfile, t, currentCompany, isView
                         i18n.changeLanguage(lang.code);
                         setShowLangMenu(false);
                       }}
-                      className={`px-4 py-2.5 rounded-xl text-left text-xs font-black uppercase tracking-widest transition-all flex items-center justify-between ${i18n.language === lang.code ? styles.button : styles.secondary}`}
+                      className={`px-3 py-2 rounded-lg text-left text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-between ${i18n.language === lang.code ? styles.button : styles.secondary}`}
                     >
                       {lang.name}
-                      {i18n.language === lang.code && <Check size={14} />}
+                      {i18n.language === lang.code && <Check size={12} />}
                     </button>
                   ))}
                 </div>
@@ -507,14 +507,14 @@ const Navbar = ({ isAdmin, onOpenAdmin, onOpenProfile, t, currentCompany, isView
                 setShowThemeMenu(!showThemeMenu);
                 setShowLangMenu(false);
               }}
-              className={`p-3 rounded-xl transition-all shadow-sm ${styles.secondary} hover:scale-105 active:scale-95`}
+              className={`w-8 h-8 rounded-lg transition-all shadow-sm ${styles.secondary} hover:scale-105 active:scale-95 flex items-center justify-center`}
               title="Change Theme"
             >
-              <Palette size={20} />
+              <Palette size={16} />
             </button>
             
             {showThemeMenu && (
-              <div className={`absolute top-full right-0 mt-3 p-2 rounded-2xl shadow-2xl border min-w-[180px] ${styles.card} z-50 animate-in fade-in slide-in-from-top-2`}>
+              <div className={`absolute top-full right-0 mt-3 p-1.5 rounded-xl shadow-2xl border min-w-[150px] ${styles.card} z-50 animate-in fade-in slide-in-from-top-2`}>
                 <div className="flex flex-col gap-1">
                   {(['light', 'dark', 'comfort', 'rose'] as Theme[]).map((tOption) => (
                     <button
@@ -523,10 +523,10 @@ const Navbar = ({ isAdmin, onOpenAdmin, onOpenProfile, t, currentCompany, isView
                         setTheme(tOption);
                         setShowThemeMenu(false);
                       }}
-                      className={`px-4 py-2.5 rounded-xl text-left text-xs font-black uppercase tracking-widest transition-all flex items-center justify-between group ${theme === tOption ? styles.button : styles.secondary}`}
+                      className={`px-3 py-2 rounded-lg text-left text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-between group ${theme === tOption ? styles.button : styles.secondary}`}
                     >
-                      {tOption === 'comfort' ? 'Eyes Comfort' : tOption}
-                      {theme === tOption ? <Check size={14} /> : <div className="w-2 h-2 rounded-full opacity-0 group-hover:opacity-20 bg-current" />}
+                      {tOption === 'comfort' ? 'Eyes' : tOption}
+                      {theme === tOption ? <Check size={12} /> : <div className="w-1.5 h-1.5 rounded-full opacity-0 group-hover:opacity-20 bg-current" />}
                     </button>
                   ))}
                 </div>
@@ -536,20 +536,20 @@ const Navbar = ({ isAdmin, onOpenAdmin, onOpenProfile, t, currentCompany, isView
         </div>
 
         {!isViewOnly && !isSuperAdmin && (
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5">
             <button 
               onClick={onOpenProfile}
-              className={`p-3 rounded-xl transition-all flex items-center gap-2 shadow-sm ${styles.secondary} hover:scale-105 active:scale-95`}
+              className={`w-8 h-8 rounded-lg transition-all flex items-center justify-center shadow-sm ${styles.secondary} hover:scale-105 active:scale-95`}
               title="Account Settings"
             >
-              <User size={20} />
+              <User size={18} />
             </button>
             <button 
               onClick={onOpenAdmin}
-              className={`flex items-center gap-3 px-5 py-3 rounded-xl transition-all font-black uppercase tracking-widest text-[10px] sm:text-xs whitespace-nowrap shadow-lg hover:translate-y-[-1px] active:scale-95 ${styles.button}`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-black uppercase tracking-widest text-[10px] whitespace-nowrap shadow-md hover:translate-y-[-1px] active:scale-95 ${styles.button}`}
             >
-              <SettingsIcon size={18} />
-              <span>{t('Admin Panel')}</span>
+              <SettingsIcon size={14} />
+              <span className="hidden sm:inline">{t('Admin')}</span>
             </button>
           </div>
         )}
@@ -557,11 +557,11 @@ const Navbar = ({ isAdmin, onOpenAdmin, onOpenProfile, t, currentCompany, isView
         {currentCompany && !isViewOnly && (
           <button 
             onClick={onLogout}
-            className={`p-3 rounded-xl transition-all shadow-md ${styles.secondary} hover:scale-105 active:scale-95 text-rose-500 border border-rose-100 flex items-center gap-2 px-4`}
-            title="Switch Company"
+            className={`px-3 py-2 rounded-lg transition-all shadow-sm ${styles.secondary} hover:scale-105 active:scale-95 text-rose-500 border border-rose-100 flex items-center gap-1.5`}
+            title="Logout"
           >
-            <LogOut size={20} />
-            <span className="text-[10px] font-black uppercase tracking-widest">{t('Logout')}</span>
+            <LogOut size={16} />
+            <span className="text-[9px] font-black uppercase tracking-widest hidden sm:inline">{t('Out')}</span>
           </button>
         )}
       </div>
