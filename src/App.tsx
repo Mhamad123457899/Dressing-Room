@@ -2579,16 +2579,14 @@ const AdminPanel = ({
           >
             Active Rentals
           </button>
-          {currentCompany?.is_paid && (
-            <button 
-              onClick={() => setActiveTab("production")}
-              className={`px-6 py-2 rounded-full font-bold transition-all ${
-                activeTab === "production" ? styles.button : `${styles.accent} hover:opacity-80`
-              }`}
-            >
-              Production Projects
-            </button>
-          )}
+          <button 
+            onClick={() => setActiveTab("production")}
+            className={`px-6 py-2 rounded-full font-bold transition-all ${
+              activeTab === "production" ? styles.button : `${styles.accent} hover:opacity-80`
+            }`}
+          >
+            Production Projects
+          </button>
           <button 
             onClick={() => setActiveTab("settings")}
             className={`px-6 py-2 rounded-full font-bold transition-all ${

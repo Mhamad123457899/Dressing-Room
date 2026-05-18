@@ -447,6 +447,16 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
                 </div>
                 <h3 className="text-xl sm:text-2xl font-bold mb-1 truncate">{company.name}</h3>
                 <p className={`text-xs mb-6 truncate ${styles.accent}`}>slug: {company.slug}</p>
+                <button
+                  onClick={async () => {
+                    await updateDoc(doc(db, "companies", company.id), { is_paid: !company.is_paid });
+                  }}
+                  className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-tighter ${
+                    company.is_paid ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+                  }`}
+                >
+                  {company.is_paid ? 'Paid' : 'Unpaid'}
+                </button>
                 
                 <div className="space-y-3 pt-6 border-t">
                   <div className="flex justify-between text-xs font-bold">
