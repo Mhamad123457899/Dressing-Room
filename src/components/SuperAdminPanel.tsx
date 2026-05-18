@@ -578,7 +578,7 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
                     <div className="aspect-[3/4] relative overflow-hidden bg-zinc-100 shimmer">
                       <img 
                         src={item.image_url} 
-                        className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500" 
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
                         loading="lazy" 
                         decoding="async"
                         onLoad={(e) => {

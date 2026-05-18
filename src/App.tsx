@@ -586,7 +586,7 @@ const ClothingCard = ({ item, onAddToCollection, onRent, isRented, activeRentals
         <img 
           src={item.image_url || `https://picsum.photos/seed/${item.id}/400/600`} 
           alt={item.name}
-          className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500"
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           referrerPolicy="no-referrer"
           loading="lazy"
           decoding="async"
@@ -5392,7 +5392,7 @@ function App() {
         onClose={() => setShowSubscriptionModal(false)}
         name="Miran Luqman"
         phone="+964 750 493 5433"
-        facebookUrl="https://www.facebook.com/miran.luqman.1"
+        facebookUrl="https://www.facebook.com/share/1DzUvN43q6/"
       />
     </div>
   );

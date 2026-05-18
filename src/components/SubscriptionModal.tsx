@@ -36,30 +36,42 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
             className="relative w-full max-w-lg bg-white rounded-[2.5rem] shadow-2xl overflow-hidden"
           >
             {/* Header / Banner */}
-            <div className="bg-gradient-to-br from-indigo-600 to-violet-700 p-8 text-white relative h-40 flex flex-col justify-end">
+            <div className="relative h-48 overflow-hidden">
+              <img 
+                src="/src/assets/images/premium_subscription_banner_1779103405747.png" 
+                alt="Premium Banner"
+                className="absolute inset-0 w-full h-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+              
               <button 
                 onClick={onClose}
-                className="absolute top-6 right-6 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+                className="absolute top-6 right-6 w-10 h-10 rounded-full bg-black/20 hover:bg-black/40 backdrop-blur-md flex items-center justify-center text-white transition-all hover:scale-110 active:scale-95 z-10"
                 id="close-subscription-modal"
               >
                 <X size={20} />
               </button>
               
-              <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-4">
-                <Crown className="text-yellow-300" size={24} fill="currentColor" />
+              <div className="absolute bottom-6 left-8 text-white">
+                <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-3">
+                  <Crown className="text-yellow-400" size={20} fill="currentColor" />
+                </div>
+                <h2 className="text-xl font-black uppercase tracking-tight">Premium Production Suite</h2>
               </div>
-              <h2 className="text-2xl font-black uppercase tracking-tight">Premium Service</h2>
             </div>
 
-            <div className="p-8 space-y-8">
+            <div className="p-8 space-y-6">
               <div>
                 <p className="text-zinc-600 font-medium leading-relaxed">
-                  The <span className="font-bold text-black uppercase tracking-wider text-sm italic">Production Panel</span> is a professional-grade suite that streamlines your entire workflow. 
+                  Elevate your project management with our <span className="font-bold text-black uppercase tracking-wider text-sm italic">Production Panel</span>. Designed for professionals who demand excellence.
                 </p>
-                <p className="mt-4 p-4 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-700 text-sm font-bold flex items-center gap-3">
-                  <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-                  This service is currently exclusive to paid accounts.
-                </p>
+                <div className="mt-5 p-5 rounded-[2rem] bg-indigo-50/50 border border-indigo-100 flex items-start gap-4 shadow-sm">
+                  <div className="mt-1 w-2 h-2 rounded-full bg-indigo-500 animate-pulse shrink-0" />
+                  <p className="text-indigo-800 text-xs font-bold leading-relaxed">
+                    This advanced module is part of our Premium tier. Upgrade your account today for full access to projects, actors, and scheduling tools.
+                  </p>
+                </div>
               </div>
 
               <div className="space-y-4">
