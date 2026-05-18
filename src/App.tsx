@@ -577,7 +577,7 @@ const ClothingCard = ({ item, onAddToCollection, onRent, isRented, activeRentals
         <img 
           src={item.image_url || `https://picsum.photos/seed/${item.id}/400/600`} 
           alt={item.name}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500"
           referrerPolicy="no-referrer"
           loading="lazy"
           decoding="async"
