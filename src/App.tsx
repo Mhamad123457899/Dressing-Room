@@ -2249,7 +2249,14 @@ const AdminPanel = ({
 }) => {
   const { theme } = useTheme();
   const styles = THEMES[theme];
-  const [activeTab, setActiveTab] = useState<"clothes" | "collections" | "rentals" | "clients" | "production" | "settings">("clothes");
+  const [activeTab, setActiveTab] = useState<"clothes" | "collections" | "rentals" | "clients" | "production" | "settings">(currentCompany?.is_paid ? "production" : "clothes");                
+
+  useEffect(() => {
+    if (currentCompany?.is_paid) {
+      setActiveTab("production");
+    }
+  }, [currentCompany?.is_paid]);
+
   const [companyLogoUrl, setCompanyLogoUrl] = useState(currentCompany?.logo_url || "");
   const [rentalFilter, setRentalFilter] = useState<"active" | "all">("active");
   const [rentalSearch, setRentalSearch] = useState("");
