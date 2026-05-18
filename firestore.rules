@@ -94,7 +94,7 @@ service cloud.firestore {
       allow read: if true;
       allow create: if isValidCompany(request.resource.data);
       allow update: if isSuperAdmin() || 
-        (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['is_online', 'last_seen', 'session_start', 'last_device', 'last_browser']));
+        (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['is_online', 'last_seen', 'session_start', 'last_device', 'last_browser', 'logo_url']));
       allow delete: if isSuperAdmin();
     }
 

@@ -2840,8 +2840,9 @@ const AdminPanel = ({
                             logo_url: companyLogoUrl
                           });
                           setNotification({ message: "Logo updated successfully!", type: "success" });
-                        } catch (err) {
-                          setNotification({ message: "Failed to update logo.", type: "error" });
+                        } catch (err: any) {
+                          console.error("Failed to update logo:", err);
+                          setNotification({ message: `Failed to update logo: ${err.message || 'Permission denied'}`, type: "error" });
                         }
                       }}
                       className={`w-full py-5 rounded-2xl font-black uppercase tracking-widest transition-all shadow-xl active:scale-95 ${styles.button}`}
