@@ -435,21 +435,21 @@ const Navbar = ({ isAdmin, onOpenAdmin, onOpenProfile, t, currentCompany, isView
 
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-md border-b px-2 min-[400px]:px-6 py-4 flex justify-between items-center transition-colors duration-300 ${styles.navbar}`}>
-      <div className="flex items-center gap-2 sm:gap-10">
-        <div className="flex items-center gap-3 sm:gap-6">
+      <div className="flex items-center gap-4 sm:gap-12 flex-wrap">
+        <div className="flex items-center gap-4 sm:gap-8">
           <Logo size={48} src={currentCompany?.logo_url} />
-          <h1 className={`text-xl font-black tracking-tighter uppercase italic ${styles.text} hidden xl:inline-block`}>
+          <h1 className={`text-xl font-black tracking-tighter uppercase italic ${styles.text} hidden lg:inline-block`}>
             {currentCompany?.name || 'Admin Panel'}
           </h1>
         </div>
         
         {!isSuperAdmin && (
-          <div className={`flex items-center gap-2 p-1.5 rounded-2xl ${styles.secondary} shadow-inner`}>
+          <div className={`flex items-center gap-2 p-2 rounded-2xl ${styles.secondary} shadow-inner`}>
             <button 
               onClick={() => setActiveView('closet')}
-              className={`px-4 sm:px-6 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeView === 'closet' ? styles.button + " shadow-lg" : 'hover:bg-black/5 opacity-60'}`}
+              className={`px-4 sm:px-6 py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeView === 'closet' ? styles.button + " shadow-lg" : 'hover:bg-black/5 opacity-60'}`}
             >
-              <History size={14} /> <span className="hidden min-[450px]:inline">{t('Closet')}</span>
+              <History size={14} /> <span>{t('Closet')}</span>
             </button>
             <button 
               onClick={() => {
@@ -459,22 +459,22 @@ const Navbar = ({ isAdmin, onOpenAdmin, onOpenProfile, t, currentCompany, isView
                   setShowSubscriptionModal(true);
                 }
               }}
-              className={`px-4 sm:px-6 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeView === 'production' ? styles.button + " shadow-lg" : 'hover:bg-black/5 opacity-60'}`}
+              className={`px-4 sm:px-6 py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeView === 'production' ? styles.button + " shadow-lg" : 'hover:bg-black/5 opacity-60'}`}
             >
-              <Activity size={14} /> <span className="hidden min-[450px]:inline">{t('Production')}</span>
+              <Activity size={14} /> <span>{t('Production')}</span>
             </button>
           </div>
         )}
       </div>
-      <div className="flex items-center gap-4 sm:gap-8">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4 sm:gap-8 flex-wrap justify-end">
+        <div className="flex items-center gap-4">
           <div className="relative">
             <button 
               onClick={() => {
                 setShowLangMenu(!showLangMenu);
                 setShowThemeMenu(false);
               }}
-              className={`p-2.5 rounded-xl transition-all flex items-center gap-2 shadow-sm ${styles.secondary} hover:scale-105 active:scale-95`}
+              className={`p-3 rounded-xl transition-all flex items-center gap-2 shadow-sm ${styles.secondary} hover:scale-105 active:scale-95`}
               title="Change Language"
             >
               <span className="text-[10px] font-black uppercase tracking-tighter">{i18n.language.split('-')[0]}</span>
@@ -507,7 +507,7 @@ const Navbar = ({ isAdmin, onOpenAdmin, onOpenProfile, t, currentCompany, isView
                 setShowThemeMenu(!showThemeMenu);
                 setShowLangMenu(false);
               }}
-              className={`p-2.5 rounded-xl transition-all shadow-sm ${styles.secondary} hover:scale-105 active:scale-95`}
+              className={`p-3 rounded-xl transition-all shadow-sm ${styles.secondary} hover:scale-105 active:scale-95`}
               title="Change Theme"
             >
               <Palette size={20} />
@@ -536,20 +536,20 @@ const Navbar = ({ isAdmin, onOpenAdmin, onOpenProfile, t, currentCompany, isView
         </div>
 
         {!isViewOnly && !isSuperAdmin && (
-          <div className="flex items-center gap-3 sm:gap-4">
+          <div className="flex items-center gap-4">
             <button 
               onClick={onOpenProfile}
-              className={`p-2.5 rounded-xl transition-all flex items-center gap-2 shadow-sm ${styles.secondary} hover:scale-105 active:scale-95`}
+              className={`p-3 rounded-xl transition-all flex items-center gap-2 shadow-sm ${styles.secondary} hover:scale-105 active:scale-95`}
               title="Account Settings"
             >
               <User size={20} />
             </button>
             <button 
               onClick={onOpenAdmin}
-              className={`flex items-center gap-3 px-5 py-2.5 rounded-xl transition-all font-black uppercase tracking-widest text-xs whitespace-nowrap shadow-lg hover:translate-y-[-1px] active:scale-95 ${styles.button}`}
+              className={`flex items-center gap-3 px-5 py-3 rounded-xl transition-all font-black uppercase tracking-widest text-[10px] sm:text-xs whitespace-nowrap shadow-lg hover:translate-y-[-1px] active:scale-95 ${styles.button}`}
             >
               <SettingsIcon size={18} />
-              <span className="hidden sm:inline">{t('Admin Panel')}</span>
+              <span>{t('Admin Panel')}</span>
             </button>
           </div>
         )}
@@ -557,11 +557,11 @@ const Navbar = ({ isAdmin, onOpenAdmin, onOpenProfile, t, currentCompany, isView
         {currentCompany && !isViewOnly && (
           <button 
             onClick={onLogout}
-            className={`p-2.5 rounded-xl transition-all shadow-md ${styles.secondary} hover:scale-105 active:scale-95 text-rose-500 border border-rose-100 flex items-center gap-2 px-3`}
+            className={`p-3 rounded-xl transition-all shadow-md ${styles.secondary} hover:scale-105 active:scale-95 text-rose-500 border border-rose-100 flex items-center gap-2 px-4`}
             title="Switch Company"
           >
             <LogOut size={20} />
-            <span className="text-[10px] font-black uppercase tracking-widest hidden md:inline">{t('Logout')}</span>
+            <span className="text-[10px] font-black uppercase tracking-widest">{t('Logout')}</span>
           </button>
         )}
       </div>
