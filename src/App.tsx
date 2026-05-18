@@ -81,6 +81,7 @@ interface Company {
   id: string;
   name: string;
   logo_url?: string;
+  is_paid?: boolean;
   slug: string;
   password?: string;
   created_at?: any;
@@ -694,6 +695,30 @@ const ClothingCard = ({ item, onAddToCollection, onRent, isRented, activeRentals
     </motion.div>
   );
 };
+
+const Paywall = ({ styles }: { styles: any }) => (
+  <div className={`p-10 rounded-[3rem] border shadow-2xl ${styles.card} flex flex-col items-center justify-center text-center`}>
+    <div className={`p-6 rounded-full ${styles.secondary} mb-8`}>
+      <Cloud size={48} className="text-blue-500" />
+    </div>
+    <h2 className={`text-4xl font-black mb-6 ${styles.text}`}>Premium Production Server</h2>
+    <p className={`text-xl max-w-lg mb-10 ${styles.muted}`}>
+      Access professional production tools, scene management, and costume tracking. Contact us to upgrade your account and activate this feature immediately.
+    </p>
+    <div className={`p-8 rounded-2xl w-full max-w-sm ${styles.secondary}`}>
+      <p className={`font-bold mb-4 ${styles.muted}`}>Contact for Activation</p>
+      <p className="text-2xl font-black mb-6">+9647704886955</p>
+      <a 
+        href="https://www.facebook.com/share/1YsTVZ6VHV/" 
+        target="_blank" 
+        rel="noopener noreferrer"
+        className={`inline-block px-8 py-3 rounded-full font-bold transition-all ${styles.button}`}
+      >
+        Message on Facebook
+      </a>
+    </div>
+  </div>
+);
 
 const ProductionBoard = ({ 
   projects, 
@@ -3142,18 +3167,22 @@ const AdminPanel = ({
             </div>
           </div>
         ) : activeTab === "production" ? (
-          <ProductionBoard 
-            projects={projects}
-            actors={actors}
-            shots={shots}
-            scenes={scenes}
-            clothes={clothes}
-            currentCompany={currentCompany}
-            isAdmin={true}
-            isViewOnly={false}
-            setNotification={setNotification}
-            setConfirmModal={setConfirmModal}
-          />
+          currentCompany?.is_paid ? (
+            <ProductionBoard 
+              projects={projects}
+              actors={actors}
+              shots={shots}
+              scenes={scenes}
+              clothes={clothes}
+              currentCompany={currentCompany}
+              isAdmin={true}
+              isViewOnly={false}
+              setNotification={setNotification}
+              setConfirmModal={setConfirmModal}
+            />
+          ) : (
+            <Paywall styles={styles} />
+          )
         ) : (
           <div className="space-y-8">
             {editingRental && (

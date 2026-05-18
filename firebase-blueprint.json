@@ -9,6 +9,7 @@
         "slug": { "type": "string", "description": "URL-friendly name for sharing" },
         "password": { "type": "string" },
         "logo_url": { "type": "string" },
+        "is_paid": { "type": "boolean", "default": false },
         "created_at": { "type": "string", "format": "date-time" }
       },
       "required": ["name", "slug", "password"]
