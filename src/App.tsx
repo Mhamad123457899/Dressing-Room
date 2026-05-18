@@ -437,7 +437,13 @@ const Navbar = ({ isAdmin, onOpenAdmin, t, currentCompany, isViewOnly, onLogout,
               <History size={14} /> <span className="hidden min-[450px]:inline">{t('Closet')}</span>
             </button>
             <button 
-              onClick={() => setActiveView('production')}
+              onClick={() => {
+                if (currentCompany?.is_paid) {
+                  setActiveView('production');
+                } else {
+                  alert("This service is not free. Please contact me to access production services:\nName: Miran Luqman\nPhone: +964 750 493 5433\nFacebook: https://www.facebook.com/miran.luqman.1");
+                }
+              }}
               className={`px-3 sm:px-4 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-all flex items-center gap-1 sm:gap-2 ${activeView === 'production' ? styles.button : 'hover:bg-black/5'}`}
             >
               <Activity size={14} /> <span className="hidden min-[450px]:inline">{t('Production')}</span>
@@ -2249,13 +2255,13 @@ const AdminPanel = ({
 }) => {
   const { theme } = useTheme();
   const styles = THEMES[theme];
-  const [activeTab, setActiveTab] = useState<"clothes" | "collections" | "rentals" | "clients" | "production" | "settings">(currentCompany?.is_paid ? "production" : "clothes");                
+  const [activeTab, setActiveTab] = useState<"clothes" | "collections" | "rentals" | "clients" | "production" | "settings">("clothes");                
 
   useEffect(() => {
-    if (currentCompany?.is_paid) {
-      setActiveTab("production");
+    if (activeTab === "production" && !currentCompany?.is_paid) {
+      setActiveTab("clothes");
     }
-  }, [currentCompany?.is_paid]);
+  }, [currentCompany?.is_paid, activeTab]);
 
   const [companyLogoUrl, setCompanyLogoUrl] = useState(currentCompany?.logo_url || "");
   const [rentalFilter, setRentalFilter] = useState<"active" | "all">("active");
@@ -2580,7 +2586,13 @@ const AdminPanel = ({
             Active Rentals
           </button>
           <button 
-            onClick={() => setActiveTab("production")}
+            onClick={() => {
+              if (currentCompany?.is_paid) {
+                setActiveTab("production");
+              } else {
+                alert("This service is not free. Please contact me to access production services:\nName: Miran Luqman\nPhone: [Add Phone]\nFacebook: [Add Facebook Link]");
+              }
+            }}
             className={`px-6 py-2 rounded-full font-bold transition-all ${
               activeTab === "production" ? styles.button : `${styles.accent} hover:opacity-80`
             }`}
@@ -3698,7 +3710,7 @@ function App() {
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [showLogin, setShowLogin] = useState(false);
   const [clothes, setClothes] = useState<ClothingItem[]>([]);
-  const [activeView, setActiveView] = useState<'closet' | 'production'>('production');
+  const [activeView, setActiveView] = useState<'closet' | 'production'>('closet');
   const [projects, setProjects] = useState<Project[]>([]);
   const [actors, setActors] = useState<Actor[]>([]);
   const [shots, setShots] = useState<Shot[]>([]);
@@ -4057,6 +4069,31 @@ function App() {
     localStorage.removeItem('companyId');
     localStorage.removeItem('isSuperAdmin');
   };
+
+  useEffect(() => {
+    if (!currentCompany?.id || isSuperAdmin) return;
+    const unsub = onSnapshot(doc(db, "companies", currentCompany.id), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data() as Company;
+        setCurrentCompany(prev => {
+          if (!prev) return { id: snap.id, ...data };
+          // Check for meaningful changes to avoid loops
+          if (prev.is_paid !== data.is_paid || prev.name !== data.name || prev.logo_url !== data.logo_url) {
+            return { ...prev, ...data };
+          }
+          return prev;
+        });
+      }
+    });
+    return () => unsub();
+  }, [currentCompany?.id, isSuperAdmin]);
+
+  useEffect(() => {
+    if (activeView === 'production' && currentCompany && !currentCompany.is_paid) {
+      setActiveView('closet');
+      alert("This service is not free. Please contact Miran Luqman (+964 750 493 5433) to access production services.");
+    }
+  }, [activeView, currentCompany?.is_paid]);
 
   useEffect(() => {
     if (isCompanyLoading || !currentCompany || isSuperAdmin) return;
