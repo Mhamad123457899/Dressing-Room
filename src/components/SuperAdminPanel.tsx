@@ -686,6 +686,19 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
               </div>
               
               <div className="flex items-center gap-4 flex-shrink-0">
+                <button
+                  onClick={async () => {
+                    if (confirm('Are you sure you want to reset ALL company accounts to Unpaid?')) {
+                      for (const company of companies) {
+                        await updateDoc(doc(db, "companies", company.id), { is_paid: false });
+                      }
+                      alert('All companies reset to Unpaid.');
+                    }
+                  }}
+                  className="px-4 py-2 rounded-full bg-red-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-red-700 transition-all"
+                >
+                  Reset All to Unpaid
+                </button>
                 <div className={`flex items-center gap-2 px-3 sm:px-4 py-1 sm:py-2 rounded-full border-2 ${selectedCompany.is_online ? 'bg-green-50 border-green-200 text-green-700' : 'bg-zinc-100 border-zinc-200 text-zinc-600'}`}>
                   <span className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${selectedCompany.is_online ? 'bg-green-500 animate-pulse' : 'bg-zinc-400'}`} />
                   <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest">{selectedCompany.is_online ? 'Live Hub' : 'Offline Node'}</span>

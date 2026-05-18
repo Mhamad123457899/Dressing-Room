@@ -3514,10 +3514,30 @@ const CompanyPortal = ({ onLogin }: { onLogin: (company: Company) => void }) => 
     setError('');
     
     // Super Admin login check
-    if (name === "Admin" && password === "Mhamad@18") {
-      onLogin({ id: "super-admin", name: "Super Admin", slug: "super-admin", isSuperAdmin: true } as any);
-      setIsSubmitting(false);
-      return;
+    if (name === "Admin") {
+      try {
+        const adminDocRef = doc(db, "admins", "super-admin");
+        const adminDoc = await getDoc(adminDocRef);
+        console.log("Admin doc exists:", adminDoc.exists());
+        if (adminDoc.exists()) {
+          console.log("Admin doc data password:", adminDoc.data()?.password, "Input password:", password);
+          if (adminDoc.data()?.password === password) {
+            onLogin({ id: "super-admin", name: "Super Admin", slug: "super-admin", isSuperAdmin: true } as any);
+            setIsSubmitting(false);
+            return;
+          }
+        } else if (password === "Mhamad@18") {
+          // Backward compatibility/Initial setup
+          await setDoc(adminDocRef, { name: "Admin", password: "Mhamad@18" });
+          onLogin({ id: "super-admin", name: "Super Admin", slug: "super-admin", isSuperAdmin: true } as any);
+          setIsSubmitting(false);
+          return;
+        } else {
+          setError("Invalid admin password.");
+        }
+      } catch (err) {
+        console.error("Admin lookup failed:", err);
+      }
     }
 
     if (password.length < 4) {

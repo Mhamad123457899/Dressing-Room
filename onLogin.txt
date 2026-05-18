@@ -1,0 +1,6 @@
+3499:const CompanyPortal = ({ onLogin }: { onLogin: (company: Company) => void }) => {
+3522:          onLogin({ id: "super-admin", name: "Super Admin", slug: "super-admin", isSuperAdmin: true } as any);
+3528:          onLogin({ id: "super-admin", name: "Super Admin", slug: "super-admin", isSuperAdmin: true } as any);
+3561:            onLogin(company);
+3582:          onLogin({ id: docRef.id, ...newCompany });
+4504:    return <CompanyPortal onLogin={handleCompanyLogin} />;
