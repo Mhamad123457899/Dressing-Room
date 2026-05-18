@@ -34,6 +34,7 @@ import {
   RefreshCcw,
   HelpCircle,
   Zap,
+  Crown,
   Settings,
   Settings as SettingsIcon,
   ShieldCheck
@@ -407,10 +408,11 @@ import { WhatsNewModal } from './components/WhatsNewModal';
 import { AccountSettingsModal } from './components/AccountSettingsModal';
 
 const APP_VERSION = "2.2.0";
-const Navbar = ({ isAdmin, onOpenAdmin, onOpenProfile, t, currentCompany, isViewOnly, onLogout, activeView, setActiveView, setNotification, setShowSubscriptionModal, isSuperAdmin = false }: { 
+const Navbar = ({ isAdmin, onOpenAdmin, onOpenProfile, onStartTour, t, currentCompany, isViewOnly, onLogout, activeView, setActiveView, setNotification, setShowSubscriptionModal, isSuperAdmin = false }: { 
   isAdmin: boolean, 
   onOpenAdmin: () => void, 
   onOpenProfile: () => void,
+  onStartTour: () => void,
   t: any, 
   currentCompany: Company | null, 
   isViewOnly: boolean,
@@ -437,8 +439,10 @@ const Navbar = ({ isAdmin, onOpenAdmin, onOpenProfile, t, currentCompany, isView
     <nav className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-md border-b px-2 py-2 flex justify-between items-center transition-colors duration-300 ${styles.navbar}`}>
       <div className="flex items-center gap-1.5 sm:gap-4">
         <div className="flex items-center gap-1.5 sm:gap-3">
-          <Logo size={36} src={currentCompany?.logo_url} />
-          <h1 className={`text-base font-black tracking-tighter uppercase italic ${styles.text} hidden lg:inline-block`}>
+          <div id="app-logo">
+            <Logo size={28} src={currentCompany?.logo_url} />
+          </div>
+          <h1 className={`text-base font-black tracking-tighter uppercase italic ${styles.text} hidden xl:inline-block`} id="app-title">
             {currentCompany?.name || 'Admin Panel'}
           </h1>
         </div>
@@ -446,12 +450,14 @@ const Navbar = ({ isAdmin, onOpenAdmin, onOpenProfile, t, currentCompany, isView
         {!isSuperAdmin && (
           <div className={`flex items-center gap-1 p-1 rounded-lg ${styles.secondary} shadow-inner`}>
             <button 
+              id="nav-closet"
               onClick={() => setActiveView('closet')}
-              className={`px-2 sm:px-3 py-1.5 rounded-md text-[8px] sm:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5 ${activeView === 'closet' ? styles.button + " shadow-sm" : 'hover:bg-black/5 opacity-60'}`}
+              className={`px-2 py-1.5 rounded-md text-[8px] sm:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-1 sm:gap-1.5 ${activeView === 'closet' ? styles.button + " shadow-sm" : 'hover:bg-black/5 opacity-60'}`}
             >
-              <History size={12} /> <span className="hidden min-[400px]:inline">{t('Closet')}</span>
+              <History size={12} /> <span className="hidden sm:inline">{t('Closet')}</span>
             </button>
             <button 
+              id="nav-production"
               onClick={() => {
                 if (currentCompany?.is_paid === true) {
                   setActiveView('production');
@@ -459,9 +465,9 @@ const Navbar = ({ isAdmin, onOpenAdmin, onOpenProfile, t, currentCompany, isView
                   setShowSubscriptionModal(true);
                 }
               }}
-              className={`px-2 sm:px-3 py-1.5 rounded-md text-[8px] sm:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5 ${activeView === 'production' ? styles.button + " shadow-sm" : 'hover:bg-black/5 opacity-60'}`}
+              className={`px-2 py-1.5 rounded-md text-[8px] sm:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-1 sm:gap-1.5 ${activeView === 'production' ? styles.button + " shadow-sm" : 'hover:bg-black/5 opacity-60'}`}
             >
-              <Activity size={12} /> <span className="hidden min-[400px]:inline">{t('Production')}</span>
+              <Activity size={12} /> <span className="hidden sm:inline">{t('Production')}</span>
             </button>
           </div>
         )}
@@ -470,6 +476,7 @@ const Navbar = ({ isAdmin, onOpenAdmin, onOpenProfile, t, currentCompany, isView
         <div className="flex items-center gap-1">
           <div className="relative">
             <button 
+              id="nav-lang"
               onClick={() => {
                 setShowLangMenu(!showLangMenu);
                 setShowThemeMenu(false);
@@ -503,6 +510,7 @@ const Navbar = ({ isAdmin, onOpenAdmin, onOpenProfile, t, currentCompany, isView
 
           <div className="relative">
             <button 
+              id="nav-theme"
               onClick={() => {
                 setShowThemeMenu(!showThemeMenu);
                 setShowLangMenu(false);
@@ -532,12 +540,28 @@ const Navbar = ({ isAdmin, onOpenAdmin, onOpenProfile, t, currentCompany, isView
                 </div>
               </div>
             )}
+
+            <button 
+              id="nav-tour"
+              onClick={onStartTour}
+              className={`w-7 h-7 rounded-lg transition-all shadow-sm ${styles.secondary} hover:scale-105 active:scale-95 flex items-center justify-center relative group`}
+              title="Start Tour"
+            >
+              <HelpCircle size={14} />
+              {!localStorage.getItem('hasSeenTour') && (
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-blue-500 rounded-full animate-ping pointer-events-none" />
+              )}
+              {!localStorage.getItem('hasSeenTour') && (
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-blue-500 rounded-full pointer-events-none" />
+              )}
+            </button>
           </div>
         </div>
 
         {!isViewOnly && !isSuperAdmin && (
           <div className="flex items-center gap-1">
             <button 
+              id="nav-profile"
               onClick={onOpenProfile}
               className={`w-7 h-7 rounded-lg transition-all flex items-center justify-center shadow-sm ${styles.secondary} hover:scale-105 active:scale-95`}
               title="Account Settings"
@@ -545,23 +569,25 @@ const Navbar = ({ isAdmin, onOpenAdmin, onOpenProfile, t, currentCompany, isView
               <User size={16} />
             </button>
             <button 
+              id="nav-admin"
               onClick={onOpenAdmin}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all font-black uppercase tracking-widest text-[9px] whitespace-nowrap shadow-sm hover:translate-y-[-1px] active:scale-95 ${styles.button}`}
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg transition-all font-black uppercase tracking-widest text-[9px] whitespace-nowrap shadow-sm hover:translate-y-[-1px] active:scale-95 ${styles.button}`}
             >
               <SettingsIcon size={12} />
-              <span className="hidden sm:inline">{t('Admin')}</span>
+              <span className="hidden md:inline">{t('Admin')}</span>
             </button>
           </div>
         )}
 
         {currentCompany && !isViewOnly && (
           <button 
+            id="nav-logout"
             onClick={onLogout}
-            className={`px-2.5 py-1.5 rounded-lg transition-all shadow-sm ${styles.secondary} hover:scale-105 active:scale-95 text-rose-500 border border-rose-100 flex items-center gap-1.5`}
+            className={`px-1.5 sm:px-2 py-1.5 rounded-lg transition-all shadow-sm ${styles.secondary} hover:scale-105 active:scale-95 text-rose-500 border border-rose-100 flex items-center gap-1`}
             title="Logout"
           >
-            <LogOut size={14} />
-            <span className="text-[8px] font-black uppercase tracking-widest hidden sm:inline">{t('Out')}</span>
+            <LogOut size={13} />
+            <span className="text-[8px] font-black uppercase tracking-widest hidden lg:inline">{t('Out')}</span>
           </button>
         )}
       </div>
@@ -4490,16 +4516,15 @@ function App() {
 
   const handleCloseTour = () => {
     localStorage.setItem('hasSeenTour', 'true');
-    setShowTour(false);
-    
-    // Check if we should also show WhatsNew after the tour (optional, but let's just set version here)
     localStorage.setItem('lastSeenVersion', APP_VERSION);
+    setShowTour(false);
   };
 
   useEffect(() => {
     const lastSeenVersion = localStorage.getItem('lastSeenVersion');
     const hasSeenTour = localStorage.getItem('hasSeenTour');
     
+    // Only show "What's New" if it's a version update for an existing user
     if (hasSeenTour && lastSeenVersion !== APP_VERSION && !isCompanyLoading && currentCompany) {
       setShowWhatsNew(true);
     }
@@ -4783,6 +4808,7 @@ function App() {
           onLogout={handleLogout}
           onOpenAdmin={() => {}}
           onOpenProfile={() => setShowAccountSettings(true)}
+          onStartTour={() => setShowTour(true)}
           t={t}
           activeView={activeView}
           setActiveView={setActiveView}
@@ -4836,6 +4862,7 @@ function App() {
           setShowLogin(true);
         }}
         onOpenProfile={() => setShowAccountSettings(true)}
+        onStartTour={() => setShowTour(true)}
         t={t}
         activeView={activeView}
         setActiveView={setActiveView}
@@ -4844,6 +4871,31 @@ function App() {
       />
 
       <main className="pt-32 pb-24 px-6 max-w-7xl mx-auto">
+        {currentCompany && !currentCompany.is_paid && !isSuperAdmin && !isViewOnly && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`mb-12 p-6 rounded-[2.5rem] bg-gradient-to-r from-amber-500 to-orange-600 text-white flex flex-col sm:flex-row items-center justify-between gap-6 shadow-2xl relative overflow-hidden group`}
+          >
+            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 blur-3xl -mr-32 -mt-32 group-hover:scale-110 transition-transform duration-1000" />
+            <div className="flex items-center gap-5 relative z-10">
+              <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30">
+                <Crown size={28} fill="currentColor" />
+              </div>
+              <div>
+                <h3 className="text-xl font-black uppercase tracking-tighter italic">Premium Features Available</h3>
+                <p className="text-xs font-bold opacity-80 uppercase tracking-widest">Upgrade to unlock Production, Scenes & Team Management</p>
+              </div>
+            </div>
+            <button 
+              onClick={() => setShowSubscriptionModal(true)}
+              className="px-10 py-4 rounded-2xl bg-white text-orange-600 text-[10px] font-black uppercase tracking-[0.2em] hover:scale-105 transition-all shadow-xl active:scale-95 relative z-10"
+            >
+              Access Premium
+            </button>
+          </motion.div>
+        )}
+
         {activeView === 'production' ? (
           <ProductionBoard 
             projects={projects}
@@ -5014,6 +5066,7 @@ function App() {
               <div className="relative flex-1 md:w-64">
                 <Search className={`absolute left-4 top-1/2 -translate-y-1/2 ${styles.muted}`} size={18} />
                 <input 
+                  id="inventory-search"
                   type="text" 
                   placeholder={t('Search by name, type, size, or color...')}
                   value={searchQuery}
@@ -5021,7 +5074,7 @@ function App() {
                   className={`w-full pl-12 pr-4 py-3 rounded-2xl outline-none focus:ring-2 focus:ring-black transition-all border ${styles.input}`}
                 />
               </div>
-              <div className={`flex items-center gap-2 px-4 py-3 rounded-2xl border ${styles.input}`}>
+              <div className={`flex items-center gap-2 px-4 py-3 rounded-2xl border ${styles.input}`} id="inventory-filter">
                 <Filter size={18} className={styles.muted} />
                 <select 
                   value={filterType}
@@ -5626,6 +5679,7 @@ function App() {
         isOpen={showWhatsNew}
         onClose={handleCloseWhatsNew}
         version={APP_VERSION}
+        onStartTour={() => setShowTour(true)}
       />
 
       {currentCompany && (

@@ -112,7 +112,22 @@ i18n
           "Delete Actor": "Delete Actor",
           "Delete Shot": "Delete Shot",
           "Cancel": "Cancel",
-          "Delete": "Delete"
+          "Delete": "Delete",
+          "Welcome!": "Welcome!",
+          "This is Şan Closet Studio, your ultimate professional wardrobe management system.": "This is Şan Closet Studio, your ultimate professional wardrobe management system.",
+          "The Closet": "The Closet",
+          "Browse your complete inventory here. Filter by color, type, or weather conditions.": "Browse your complete inventory here. Filter by color, type, or weather conditions.",
+          "Production Panel": "Production Panel",
+          "Access project planning, actor coordination, and scene tracking for your TVC projects.": "Access project planning, actor coordination, and scene tracking for your TVC projects.",
+          "Language & Theme": "Language & Theme",
+          "Switch between Kurdish, Arabic, and English, or change the app color theme here.": "Switch between Kurdish, Arabic, and English, or change the app color theme here.",
+          "Account Settings": "Account Settings",
+          "Manage your company identity, name, and logo directly.": "Manage your company identity, name, and logo directly.",
+          "Admin Tools": "Admin Tools",
+          "Add new items, manage clients, and oversee all activities in your studio.": "Add new items, manage clients, and oversee all activities in your studio.",
+          "Safely exit your session from here.": "Safely exit your session from here.",
+          "Interactive Tour": "Interactive Tour",
+          "Start Tour": "Start Tour"
         }
       },
       ku: {
@@ -219,7 +234,22 @@ i18n
           "Delete Actor": "سڕینەوەی ئەکتەر",
           "Delete Shot": "سڕینەوەی گرتە",
           "Cancel": "پەشیمانبوونەوە",
-          "Delete": "سڕینەوە"
+          "Delete": "سڕینەوە",
+          "Welcome!": "بەخێربێیت!",
+          "This is Şan Closet Studio, your ultimate professional wardrobe management system.": "ئەمە ستۆدیۆی کۆگای شانە، سیستەمی کۆتایی بەڕێوەبردنی جلوبەرگی پێشەیی تۆیە.",
+          "The Closet": "کۆگای جل",
+          "Browse your complete inventory here. Filter by color, type, or weather conditions.": "هەموو ئەرشیفەکەت لێرە ببینە. فلتەریان بکە بەپێی ڕەنگ، جۆر، یان جۆرایەتی کەش و هەوا.",
+          "Production Panel": "پەنێلی بەرهەمهێنان",
+          "Access project planning, actor coordination, and scene tracking for your TVC projects.": "دەستت بگات بە پلاندانانی پڕۆژە، هەماهەنگی ئەکتەر، و شوێنکەوتنی دیمەن بۆ پڕۆژەکانی TVC.",
+          "Language & Theme": "زمان و ڕووکار",
+          "Switch between Kurdish, Arabic, and English, or change the app color theme here.": "زمانەکان بگۆڕە یان لێرەدا ڕووکاری ڕەنگی ئەپەکە بگۆڕە.",
+          "Account Settings": "ڕێکخستنەکانی هەژمار",
+          "Manage your company identity, name, and logo directly.": "ناسنامەی کۆمپانیا، ناو، و لۆگۆ ڕاستەوخۆ لێرە بگۆڕە.",
+          "Admin Tools": "ئامرازەکانی ئەدمین",
+          "Add new items, manage clients, and oversee all activities in your studio.": "پارچەی نوێ زیاد بکە، موشتەرییەکان بەڕێوەببەرە و چاودێری هەموو چالاکییەکان بکە.",
+          "Safely exit your session from here.": "بە سەلامەتی لێرەوە بچۆ دەرەوە.",
+          "Interactive Tour": "گەشتی فێرکاری",
+          "Start Tour": "دەستپێکردنی گەشت"
         }
       },
       ar: {
@@ -327,7 +357,22 @@ i18n
           "Failed to delete project.": "فشل حذف المشروع.",
           "Failed to delete actor.": "فشل حذف الممثل.",
           "Failed to delete shot.": "فشل حذف اللقطة.",
-          "This project can no longer be edited or deleted.": "لا يمكن تعديل أو حذف هذا المشروع بعد الآن."
+          "This project can no longer be edited or deleted.": "لا يمكن تعديل أو حذف هذا المشروع بعد الآن.",
+          "Welcome!": "أهلاً بك!",
+          "This is Şan Closet Studio, your ultimate professional wardrobe management system.": "هذا هو ستوديو خزانة شأن، نظامك الأمثل لإدارة خزانة الملابس الاحترافية.",
+          "The Closet": "الخزانة",
+          "Browse your complete inventory here. Filter by color, type, or weather conditions.": "تصفح مخزونك الكامل هنا. قم بالتصفية حسب اللون أو النوع أو أحوال الطقس.",
+          "Production Panel": "لوحة الإنتاج",
+          "Access project planning, actor coordination, and scene tracking for your TVC projects.": "الوصول إلى تخطيط المشاريع، وتنسيق الممثلين، وتتبع المشاهد لمشاريعك الإعلانية.",
+          "Language & Theme": "اللغة والمظهر",
+          "Switch between Kurdish, Arabic, and English, or change the app color theme here.": "بدل بين اللغات أو غير مظهر التطبيق من هنا.",
+          "Account Settings": "إعدادات الحساب",
+          "Manage your company identity, name, and logo directly.": "إدارة هوية شركتك واسمها وشعارها مباشرة.",
+          "Admin Tools": "أدوات المسؤول",
+          "Add new items, manage clients, and oversee all activities in your studio.": "إضافة عناصر جديدة، وإدارة العملاء، والإشراف على كافة الأنشطة.",
+          "Safely exit your session from here.": "سجل خروجك بأمان من هنا.",
+          "Interactive Tour": "جولة تفاعلية",
+          "Start Tour": "ابدأ الجولة"
         }
       }
     },

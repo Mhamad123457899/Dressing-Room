@@ -2,6 +2,8 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Phone, Facebook, User, Crown, ExternalLink } from 'lucide-react';
 
+const bannerImg = 'https://picsum.photos/seed/premium_banner/800/400';
+
 interface SubscriptionModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -38,7 +40,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
             {/* Header / Banner */}
             <div className="relative h-40 sm:h-48 overflow-hidden shrink-0">
               <img 
-                src="/src/assets/images/premium_subscription_banner_1779103405747.png" 
+                src={bannerImg} 
                 alt="Premium Banner"
                 className="absolute inset-0 w-full h-full object-cover"
                 referrerPolicy="no-referrer"

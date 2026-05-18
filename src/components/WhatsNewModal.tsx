@@ -46,9 +46,10 @@ interface WhatsNewModalProps {
   isOpen: boolean;
   onClose: () => void;
   version: string;
+  onStartTour?: () => void;
 }
 
-export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ isOpen, onClose, version }) => {
+export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ isOpen, onClose, version, onStartTour }) => {
   if (!isOpen) return null;
 
   return (
@@ -117,12 +118,24 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ isOpen, onClose, v
           </div>
 
           {/* Footer */}
-          <div className="p-8 pt-0 shrink-0">
+          <div className="p-8 pt-0 shrink-0 flex flex-col sm:flex-row gap-3">
+            {onStartTour && (
+              <button
+                onClick={() => {
+                  onClose();
+                  onStartTour();
+                }}
+                className="flex-1 py-4 rounded-2xl bg-indigo-600 text-white font-black uppercase tracking-[0.2em] text-sm hover:bg-indigo-500 transition-all active:scale-95 shadow-xl flex items-center justify-center gap-2"
+              >
+                <Sparkles size={18} />
+                Interactive Tour
+              </button>
+            )}
             <button
               onClick={onClose}
-              className="w-full py-4 rounded-2xl bg-zinc-950 text-white font-black uppercase tracking-[0.2em] text-sm hover:bg-zinc-800 transition-all active:scale-95 shadow-xl"
+              className={`py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-sm transition-all active:scale-95 shadow-lg ${onStartTour ? 'flex-1 bg-zinc-100 text-zinc-900 hover:bg-zinc-200' : 'w-full bg-zinc-950 text-white hover:bg-zinc-800'}`}
             >
-              Understand & Continue
+              Continue
             </button>
           </div>
         </motion.div>
