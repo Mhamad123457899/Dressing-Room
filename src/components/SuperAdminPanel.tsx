@@ -734,6 +734,35 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
                   </section>
 
                   <section>
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.3em] mb-8 text-zinc-400 border-b pb-4">Account Status</h3>
+                    <div className="p-8 rounded-[3rem] bg-white border-2 border-zinc-100 shadow-sm flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-black uppercase tracking-tight text-black">Subscription Status</p>
+                        <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-widest mt-1">Control access to production services</p>
+                      </div>
+                      <button 
+                        onClick={async () => {
+                          const newStatus = !selectedCompany.is_paid;
+                          try {
+                            await updateDoc(doc(db, "companies", selectedCompany.id), {
+                              is_paid: newStatus
+                            });
+                          } catch (err) {
+                            console.error("Failed to update company payment status:", err);
+                          }
+                        }}
+                        className={`px-6 py-3 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all ${
+                          selectedCompany.is_paid 
+                            ? 'bg-green-600 text-white hover:bg-green-700' 
+                            : 'bg-zinc-100 text-zinc-400 hover:bg-zinc-200'
+                        }`}
+                      >
+                        {selectedCompany.is_paid ? 'Paid Account' : 'Unpaid Account'}
+                      </button>
+                    </div>
+                  </section>
+
+                  <section>
                     <h3 className="text-[10px] font-black uppercase tracking-[0.3em] mb-8 text-zinc-400 border-b pb-4">Brand Configuration</h3>
                     <div className="p-8 rounded-[3rem] bg-white border-2 border-zinc-100 shadow-sm space-y-6">
                       <div>

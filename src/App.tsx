@@ -394,8 +394,8 @@ const ThemeProvider = ({ children }: { children: ReactNode }) => {
 
 import { LanguageSwitcher } from './components/LanguageSwitcher';
 import { SuperAdminPanel } from './components/SuperAdminPanel';
-// ... (rest of imports)
-const Navbar = ({ isAdmin, onOpenAdmin, t, currentCompany, isViewOnly, onLogout, activeView, setActiveView, isSuperAdmin = false }: { 
+import { SubscriptionModal } from './components/SubscriptionModal';
+const Navbar = ({ isAdmin, onOpenAdmin, t, currentCompany, isViewOnly, onLogout, activeView, setActiveView, setNotification, setShowSubscriptionModal, isSuperAdmin = false }: { 
   isAdmin: boolean, 
   onOpenAdmin: () => void, 
   t: any, 
@@ -404,6 +404,8 @@ const Navbar = ({ isAdmin, onOpenAdmin, t, currentCompany, isViewOnly, onLogout,
   onLogout: () => void,
   activeView: 'closet' | 'production',
   setActiveView: (view: 'closet' | 'production') => void,
+  setNotification: (notif: {message: string, type: 'success' | 'error'} | null) => void,
+  setShowSubscriptionModal: (show: boolean) => void,
   isSuperAdmin?: boolean
 }) => {
   const { i18n } = useTranslation();
@@ -438,10 +440,10 @@ const Navbar = ({ isAdmin, onOpenAdmin, t, currentCompany, isViewOnly, onLogout,
             </button>
             <button 
               onClick={() => {
-                if (currentCompany?.is_paid) {
+                if (currentCompany?.is_paid === true) {
                   setActiveView('production');
                 } else {
-                  alert("This service is not free. Please contact me to access production services:\nName: Miran Luqman\nPhone: +964 750 493 5433\nFacebook: https://www.facebook.com/miran.luqman.1");
+                  setShowSubscriptionModal(true);
                 }
               }}
               className={`px-3 sm:px-4 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-all flex items-center gap-1 sm:gap-2 ${activeView === 'production' ? styles.button : 'hover:bg-black/5'}`}
@@ -2232,7 +2234,8 @@ const AdminPanel = ({
   onReturn, onDeleteRental, setNotification, setConfirmModal, 
   setAddToCollectionModal, seedSampleData, isSubmitting, 
   currentCompany, isViewOnly,
-  projects, actors, shots, scenes
+  projects, actors, shots, scenes,
+  setShowSubscriptionModal
 }: { 
   onClose: () => void, 
   rentals: Rental[], 
@@ -2251,7 +2254,8 @@ const AdminPanel = ({
   projects: Project[],
   actors: Actor[],
   shots: Shot[],
-  scenes: Scene[]
+  scenes: Scene[],
+  setShowSubscriptionModal: (show: boolean) => void
 }) => {
   const { theme } = useTheme();
   const styles = THEMES[theme];
@@ -2587,10 +2591,10 @@ const AdminPanel = ({
           </button>
           <button 
             onClick={() => {
-              if (currentCompany?.is_paid) {
+              if (currentCompany?.is_paid === true) {
                 setActiveTab("production");
               } else {
-                alert("This service is not free. Please contact me to access production services:\nName: Miran Luqman\nPhone: [Add Phone]\nFacebook: [Add Facebook Link]");
+                setShowSubscriptionModal(true);
               }
             }}
             className={`px-6 py-2 rounded-full font-bold transition-all ${
@@ -3594,6 +3598,7 @@ const CompanyPortal = ({ onLogin }: { onLogin: (company: Company) => void }) => 
             slug,
             password,
             logo_url: logoUrl,
+            is_paid: false,
             created_at: Timestamp.now()
           };
           const docRef = await addDoc(collection(db, "companies"), newCompany);
@@ -4089,9 +4094,9 @@ function App() {
   }, [currentCompany?.id, isSuperAdmin]);
 
   useEffect(() => {
-    if (activeView === 'production' && currentCompany && !currentCompany.is_paid) {
+    if (activeView === 'production' && currentCompany && currentCompany.is_paid === false) {
       setActiveView('closet');
-      alert("This service is not free. Please contact Miran Luqman (+964 750 493 5433) to access production services.");
+      setShowSubscriptionModal(true);
     }
   }, [activeView, currentCompany?.is_paid]);
 
@@ -4215,6 +4220,7 @@ function App() {
   }, [currentCompany, isAdmin, isViewOnly, isCompanyLoading, currentUser]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error' | 'info'} | null>(null);
   const [activeFooterModal, setActiveFooterModal] = useState<'privacy' | 'terms' | 'support' | 'about' | null>(null);
 
@@ -4560,6 +4566,8 @@ function App() {
           t={t}
           activeView={activeView}
           setActiveView={setActiveView}
+          setNotification={setNotification}
+          setShowSubscriptionModal={setShowSubscriptionModal}
         />
         <main className="pt-32 pb-24 px-6 max-w-7xl mx-auto">
           <SuperAdminPanel 
@@ -4610,6 +4618,8 @@ function App() {
         t={t}
         activeView={activeView}
         setActiveView={setActiveView}
+        setNotification={setNotification}
+        setShowSubscriptionModal={setShowSubscriptionModal}
       />
 
       <main className="pt-32 pb-24 px-6 max-w-7xl mx-auto">
@@ -5275,6 +5285,7 @@ function App() {
             isSubmitting={isSubmitting}
             currentCompany={currentCompany}
             isViewOnly={isViewOnly}
+            setShowSubscriptionModal={setShowSubscriptionModal}
           />
         )}
       </AnimatePresence>
@@ -5375,6 +5386,14 @@ function App() {
           </div>
         </div>
       </footer>
+
+      <SubscriptionModal 
+        isOpen={showSubscriptionModal}
+        onClose={() => setShowSubscriptionModal(false)}
+        name="Miran Luqman"
+        phone="+964 750 493 5433"
+        facebookUrl="https://www.facebook.com/miran.luqman.1"
+      />
     </div>
   );
 }
