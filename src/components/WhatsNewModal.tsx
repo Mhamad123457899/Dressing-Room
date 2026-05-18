@@ -11,33 +11,33 @@ interface UpdateItem {
 
 const UPDATES: UpdateItem[] = [
   {
-    title: "Onboarding Tour",
-    description: "New to the platform? Our interactive tour will guide you through every button and feature to get you started quickly.",
+    title: "Account Admin Panel",
+    description: "Manage your brand identity directly. Update your company name and logo URL to personalize your closet experience.",
     icon: <Layout size={24} />,
     color: "bg-indigo-500"
   },
   {
-    title: "Mobile-First Design",
-    description: "The interface is now fully flexible and scrollable on any screen size. Experience the same power on your phone as you do on desktop.",
-    icon: <Smartphone size={24} />,
-    color: "bg-emerald-500"
-  },
-  {
-    title: "Perfect Image Fitting",
-    description: "Wardrobe inventory images now adapt perfectly to their containers, removing awkward spaces and ensuring a clean look.",
-    icon: <Sparkles size={24} />,
-    color: "bg-amber-500"
-  },
-  {
-    title: "Enhanced Premium Suite",
-    description: "Our subscription system now provides clearer details about the benefits of our Production Suite and professional tools.",
-    icon: <CreditCard size={24} />,
+    title: "Security Shield",
+    description: "Your data is safer than ever. We've added a password verification step for sensitive identity changes to keep your account protected.",
+    icon: <Zap size={24} />,
     color: "bg-rose-500"
   },
   {
-    title: "Direct Support",
-    description: "Need help? We've updated our contact information and added a direct link to our official Facebook profile.",
-    icon: <ExternalLink size={24} />,
+    title: "Şan-Support Bot",
+    description: "Meet our new AI assistant! If you forget your password, the bot will guide you through a secure recovery process using your identity details.",
+    icon: <Sparkles size={24} />,
+    color: "bg-emerald-500"
+  },
+  {
+    title: "Multi-Language Support",
+    description: "Fluent across Kurdish, Arabic, and English. The entire interface now adapts perfectly to your preferred language.",
+    icon: <Smartphone size={24} />,
+    color: "bg-amber-500"
+  },
+  {
+    title: "Compacted Up Bar",
+    description: "We've optimized the navigation bar to be more flexible and fit perfectly on all screen sizes, even with many buttons.",
+    icon: <CreditCard size={24} />,
     color: "bg-blue-500"
   }
 ];
